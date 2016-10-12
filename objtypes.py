@@ -7,11 +7,12 @@
 # This file defines object classes and a few helper functions for the game world defined in setup.py
 
 # * TODO
-# * Check all single vs. double quotes
 # * Check all return values
 # * Check all * comments to make sure they are resolved
 # * write a test suite that makes sense
 # * add type signatures to everything??
+# * add extension code from printout
+# * add text parser??
 
 import random
 from objsys import *
@@ -29,14 +30,14 @@ from objsys import *
 class Named_Object(object):
     def __init__(self, name):
         self.name = name
-        self.installed = False
+        self.isInstalled = False
     
     def install(self):
-        self.installed = True
+        self.isInstalled = True
         print self.name + " installed!"
     
     def delete(self):
-        self.installed = False
+        self.isInstalled = False
         print self.name + " deleted!"
 
 # Given a list of objects, returns a list of their names.
@@ -44,6 +45,12 @@ def names(objectlist):
     namelist = [x.name for x in objectlist]
     return namelist
 
+# Given a name and a list of objects, returns the object with that name.
+def objectfind(objectname, objectlist):
+    for each in objectlist:
+        if each.name == objectname:
+            return each
+    return None
 # --------------------
 # Container
 # 
@@ -72,7 +79,7 @@ class Container(object):
 # --------------------
 # Thing
 # 
-# A Thing is a Named_Object that has a location.
+# A Thing is a Named_Object that has a Place.
 
 class Thing(Named_Object):
     def __init__(self, name, location):
@@ -228,7 +235,8 @@ class Person(Container, Mobile_Thing):
             print each.name + " has " + ", ".join(itemlist)
         return all_items
     
-    def take(self, item):
+    def take(self, itemname):
+        item = objectfind(itemname, self.location.things)
         if self.have_thing(item):
             self.say("I am already carrying " + item.name)
             return False
@@ -249,7 +257,8 @@ class Person(Container, Mobile_Thing):
         self.have_fit()
         item.change_location(destination)
     
-    def drop(self, item):
+    def drop(self, itemname):
+        item = objectfind(itemname, self.location.things)
         self.say("I drop " + item.name + " at " + self.location.name)
         item.change_location(self.location)
     
@@ -325,7 +334,7 @@ class Autonomous_Person(Person):
             self.go_exit(exit)
     
     def take(self):
-        items = self.things_around().extend(self.peek_around())
+        items = self.things_around() + self.peek_around()
         if len(items) > 0:
             super(Autonomous_Person, self).take(random.choice(items))
         return False
@@ -417,18 +426,18 @@ class Avatar(Person):
     def __init__(self, name, birthplace):
         super(Avatar, self).__init__(name, birthplace)
     
-    def look_around(self):
+    def look(self):
         screen.tell_world("You are in " + self.location.name)
         if len(self.things) > 0:
             screen.tell_world("You are holding: " + ", ".join(names(self.things)))
         else:
             screen.tell_world("You are not holding anything.")
         if len(self.things_around()) > 0:
-            screen.tell_world("You see stuff in the room: " + ", ".join(names(self.things_around)))
+            screen.tell_world("You see stuff in the room: " + ", ".join(names(self.things_around())))
         else:
             screen.tell_world("There is no stuff in the room.")
         if len(self.people_around()) > 0:
-            screen.tell_world("You see other people: " + ", ".join(names(self.people_around)))
+            screen.tell_world("You see other people: " + ", ".join(names(self.people_around())))
         else:
             screen.tell_world("There are no other people around you.")
         if len(self.location.exits) > 0:

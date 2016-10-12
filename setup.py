@@ -1,10 +1,12 @@
 from objtypes import *
 
 def two_way_exit(origin, direction1, direction2, destination):
+    """Installs an Exit in """
     Exit(origin, direction1, destination).install()
     Exit(destination, direction2, origin).install()
 
 def create_world():
+    """create_world() returns a list holding all installed Places (with Exits), Things, and Mobile_Things."""
     world = {"grendels-den" : Place("grendels-den"),
     "barker-library" : Place("barker-library"),
     "lobby-7" : Place("lobby-7"),
@@ -73,10 +75,11 @@ def populate_weapons(rooms):
 def populate_players(rooms):
     names = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-frosh", "lambda-man", "grumpy-grad-student"]
     vamp = random.choice(names)
-    humans = names.remove(vamp)
-    Vampire(vamp, random.choice(rooms), False).install()
-    for eacn in humans:
-        Autonomous_Person(each, random.choice(rooms), random.randint(0, 3), random.randint(0, 3)).install()
+    names.remove(vamp)
+    k = random.choice(rooms.keys())
+    Vampire(vamp, rooms[k], False).install()
+    for each in names:
+        Autonomous_Person(each, rooms[k], random.randint(0, 3), random.randint(0, 3)).install()
     return "populated-players"
 
 def setup(name):
@@ -85,6 +88,6 @@ def setup(name):
     rooms = create_world()
     #populate_weapons(rooms)
     populate_players(rooms)
-    me = Avatar(name, random.choice(rooms))
+    me = Avatar(name, rooms[random.choice(rooms.keys())])
     screen.set_me(me)
-    return "ready"
+    return me

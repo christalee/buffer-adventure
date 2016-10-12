@@ -45,14 +45,14 @@ class Clock(object):
         self.callbacks = []
 
     def tick(self):
-        self.removed_callbacks = []
-        for each in self.callbacks.reverse():
+        for each in reversed(self.callbacks):
             if each not in self.removed_callbacks:
                 each.activate()
+        self.removed_callbacks = [] # * does this do things corrrectly??
         self.time += 1
     
     def print_tick(self):
-        screen.tell_world("---" + self.name + " Tick " + self.time + "---")
+        screen.tell_world("---" + self.name + " Tick " + str(self.time) + "---")
     
     def add_callback(self, cb):
         if isinstance(cb, Clock_CB):
@@ -82,14 +82,14 @@ class Clock_CB(object):
         self.name = name
         self.object = obj
         self.message = msg
-        self.installed = False
+        self.isInstalled = False
     
     def install(self):
-        self.installed = True
+        self.isInstalled = True
         print self.name + " installed!"
     
     def activate(self):
-        self.object.__dict__[self.message]
+        getattr(self.object, self.message)()
 
 clock = Clock()
 
