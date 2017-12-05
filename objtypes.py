@@ -158,7 +158,7 @@ class Exit(Named_Object):
             if self.origin.add_exit(self):
                 super(Exit, self).install()
     
-    def use(self, whom):
+    def use(self, whom): # * what does leave_room even do?? is it meant to be superseded in Person? Check that the Place stops having the Person when they use the Exit??
         whom.leave_room()
         screen.tell_room(whom.location, whom.name + " moves from " + whom.location.name + " to " + self.destination.name)
         whom.change_location(self.destination)

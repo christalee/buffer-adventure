@@ -1,2 +1,5 @@
 *.pyc
-.DS_Store
+.DS_Store 
+scheme\ originals/ 
+trinket\ adventure\ game/
+ch11_world/
