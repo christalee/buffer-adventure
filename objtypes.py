@@ -2,15 +2,19 @@
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
 #
-# A Python implementation of a vampire-themed text adventure game, originally written in Scheme. I extended this game for Project 4, The Object-Oriented Adventure game, during the Spring 2004 term of 6.001, Structure & Interpretation of Computer Programs. The original assignment and project files can be found here: http://sicp.ai.mit.edu/Spring-2004/projects/index.html
+# A Python implementation of a vampire-themed text adventure game, originally written in Scheme. I extended this game for Project 4, the Object-Oriented Adventure Game, during the Spring 2004 term of 6.001, Structure & Interpretation of Computer Programs. The original assignment and project files can be found here: http://sicp.ai.mit.edu/Spring-2004/projects/index.html
 #
 # This file defines object classes and a few helper functions for the game world defined in setup.py
 
 # * TODO
+# * decide how I want to interact with the game during dev & prod
+# * migrate to python 3.6 at least
+# * pick a docstring convention and stick with it
+# * scan & transcribe/OCR printout
 # * Check all return values
-# * Check all * comments to make sure they are resolved
-# * write a test suite that makes sense
-# * add type signatures to everything??
+# * Resolve all TODO / comments
+# * write a test suite
+# * add type signatures to everything
 # * add extension code from printout
 # * add text parser??
 
@@ -40,17 +44,6 @@ class Named_Object(object):
         self.isInstalled = False
         print self.name + " deleted!"
 
-# Given a list of objects, returns a list of their names.
-def names(objectlist):
-    namelist = [x.name for x in objectlist]
-    return namelist
-
-# Given a name and a list of objects, returns the object with that name.
-def objectfind(objectname, objectlist):
-    for each in objectlist:
-        if each.name == objectname:
-            return each
-    return None
 # --------------------
 # Container
 # 
@@ -158,34 +151,13 @@ class Exit(Named_Object):
             if self.origin.add_exit(self):
                 super(Exit, self).install()
     
-    def use(self, whom): # * what does leave_room even do?? is it meant to be superseded in Person? Check that the Place stops having the Person when they use the Exit??
+    # TODO what does leave_room even do?? is it meant to be superseded in Person? 
+    # TODO Check that the Place stops having the Person when they use the Exit??
+    def use(self, whom): 
         whom.leave_room()
         screen.tell_room(whom.location, whom.name + " moves from " + whom.location.name + " to " + self.destination.name)
         whom.change_location(self.destination)
         whom.enter_room()
-
-# Given a list of exits, find one in the desired direction.
-
-# * Add better handling for returning more than one exit here. Consider changing exits to be named by destination rather than direction??
-def find_exit(exitlist, dir):
-    if len(exitlist) > 0:
-        exit = filter(lambda each: each.direction == dir, exitlist)
-        if len(exit) == 1:
-            return exit[0]
-        elif len(exit) == 0:
-            print "No exits found in that direction."
-        else:
-            print "Exits in that direction lead to: "
-            for each in exit:
-                print each.destination.name
-            print "Please enter the index of the exit you want to use."
-            index = input()
-            return exit[index]
-    else:
-        print "No exit."
-
-def random_exit(place):
-    return random.choice(place.exits)
 
 # --------------------
 # Person
@@ -195,7 +167,7 @@ def random_exit(place):
 # 
 # A Person can move around (is a Mobile_Thing), and can hold Things (is a Container). A Person has a plethora of methods.
 
-# * Currently everything is printed to global output; eventually it should be restricted to a single location (look for calls to screen and/or 'TELL-ROOM)
+# TODO Currently everything is printed to global output; eventually it should be restricted to a single location (look for calls to screen and/or 'TELL-ROOM)
 
 class Person(Container, Mobile_Thing):
     def __init__(self, name, birthplace):
@@ -302,7 +274,7 @@ class Person(Container, Mobile_Thing):
 # activity determines maximum movement
 # miserly determines chance of picking stuff up
 
-# * At some point, check all return values in original and decide if they are meaningful
+# TODO At some point, check all return values in original and decide if they are meaningful
 
 class Autonomous_Person(Person):
     def __init__(self, name, birthplace, activity, miserly):
@@ -310,9 +282,10 @@ class Autonomous_Person(Person):
         self.miserly = miserly
         super(Autonomous_Person, self).__init__(name, birthplace)
     
+    # TODO revisit this when clock is invented
     def install(self):
         super(Autonomous_Person, self).install()
-        clock.add_callback(Clock_CB("move-and-take", self, "move_and_take")) # * need to revisit this when clock is invented
+        clock.add_callback(Clock_CB("move-and-take", self, "move_and_take")) 
     
     def move_and_take(self):
         moves = random.randint(0, self.activity)

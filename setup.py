@@ -2,53 +2,43 @@ from objtypes import *
 
 def two_way_exit(origin, direction1, direction2, destination):
     """Installs an Exit in """
-    Exit(origin, direction1, destination).install()
-    Exit(destination, direction2, origin).install()
+    Exit(world[origin], direction1, world[destination]).install()
+    Exit(world[destination], direction2, world[origin]).install()
+
+def places = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301"]
+
+def exits =   [["lobby-10", "up", "down", "10-250"],
+              ["grendels-den", "up", "down", "lobby-10"],
+              ["10-250", "up", "down", "barker-library"],
+              ["lobby-10", "west", "east", "lobby-7"],
+              ["lobby-7", "west", "east", "student-center"],
+              ["student-center", "south", "north", "bexley"],
+              ["bexley", "west", "east", "baker"],
+              ["lobby-10", "north", "south", "building-13"],
+              ["lobby-10", "south", "north", "great-court"],
+              ["building-13", "north", "south", "edgerton-hall"],
+              ["edgerton-hall", "up", "down", "34-301"],
+              ["34-301", "up", "down", "eecs-hq"],
+              ["34-301", "east", "west", "stata-center"],
+              ["stata-center", "north", "south", "stata-center"],
+              ["stata-center", "up", "down", "stata-center"],
+              ["eecs-hq", "west", "east", "eecs-ug-office"],
+              ["edgerton-hall", "north", "south", "legal-seafood"],
+              ["eecs-hq", "up", "down", "6001-lab"],
+              ["legal-seafood", "east", "west", "great-court"],
+              ["great-court", "up", "down", "graduation-stage"]
+              ]
 
 def create_world():
     """create_world() returns a list holding all installed Places (with Exits), Things, and Mobile_Things."""
-    world = {"grendels-den" : Place("grendels-den"),
-    "barker-library" : Place("barker-library"),
-    "lobby-7" : Place("lobby-7"),
-    "10-250" : Place("10-250"),
-    "lobby-10" : Place("lobby-10"),
-    "eecs-hq" : Place("eecs-hq"),
-    "eecs-ug-office" : Place("eecs-ug-office"),
-    "edgerton-hall" : Place("edgerton-hall"),
-    "stata-center" : Place("stata-center"),
-    "6001-lab" : Place("6001-lab"),
-    "building-13" : Place("building-13"),
-    "great-court" : Place("great-court"),
-    "student-center" : Place("student-center"),
-    "bexley" : Place("bexley"),
-    "baker" : Place("baker"),
-    "legal-seafood" : Place("legal-seafood"),
-    "graduation-stage" : Place("graduation-stage"),
-    "34-301" : Place("34-301")}
-    
-    for each in world.keys():
-        world[each].install()
-    
-    two_way_exit(world["lobby-10"], "up", "down", world["10-250"])
-    two_way_exit(world["grendels-den"], "up", "down", world["lobby-10"])
-    two_way_exit(world["10-250"], "up", "down", world["barker-library"])
-    two_way_exit(world["lobby-10"], "west", "east", world["lobby-7"])
-    two_way_exit(world["lobby-7"], "west", "east", world["student-center"])
-    two_way_exit(world["student-center"], "south", "north", world["bexley"])
-    two_way_exit(world["bexley"], "west", "east", world["baker"])
-    two_way_exit(world["lobby-10"], "north", "south", world["building-13"])
-    two_way_exit(world["lobby-10"], "south", "north", world["great-court"])
-    two_way_exit(world["building-13"], "north", "south", world["edgerton-hall"])
-    two_way_exit(world["edgerton-hall"], "up", "down", world["34-301"])
-    two_way_exit(world["34-301"], "up", "down", world["eecs-hq"])
-    two_way_exit(world["34-301"], "east", "west", world["stata-center"])
-    two_way_exit(world["stata-center"], "north", "south", world["stata-center"])
-    two_way_exit(world["stata-center"], "up", "down", world["stata-center"])
-    two_way_exit(world["eecs-hq"], "west", "east", world["eecs-ug-office"])
-    two_way_exit(world["edgerton-hall"], "north", "south", world["legal-seafood"])
-    two_way_exit(world["eecs-hq"], "up", "down", world["6001-lab"])
-    two_way_exit(world["legal-seafood"], "east", "west", world["great-court"])
-    two_way_exit(world["great-court"], "up", "down", world["graduation-stage"])
+    world = {}
+    for p in places:
+      world[p] = Place(p)
+      world[p].install()
+
+    map(two_way_exit, exits)
+    # TODO factor out data into its own file and/or use a less clumsy structure to hold & install them
+    # map(install, map(Thing, *things))
     
     Thing("blackboard", world["10-250"]).install()
     Thing("lovely-trees", world["great-court"]).install()
@@ -63,6 +53,7 @@ def create_world():
     
     return world
 
+    # TODO also refactor these, yikes
 def populate_weapons(rooms):
     Weapon("chair-of-the-faculty", random.choice(rooms), 5).install()
     Weapon("student-riot", random.choice(rooms), 4).install()

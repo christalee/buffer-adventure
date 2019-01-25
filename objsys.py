@@ -2,11 +2,11 @@
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
 #
-# A Python implementation of a vampire-themed text adventure game, originally written in Scheme. I extended this game for Project 4, The Object-Oriented Adventure game, during the Spring 2004 term of 6.001, Structure & Interpretation of Computer Programs. The original assignment and project files can be found here: http://sicp.ai.mit.edu/Spring-2004/projects/index.html
+# A Python implementation of a vampire-themed text adventure game, originally written in Scheme. I extended this game for Project 4, the Object-Oriented Adventure Game, during the Spring 2004 term of 6.001, Structure & Interpretation of Computer Programs. The original assignment and project files can be found here: http://sicp.ai.mit.edu/Spring-2004/projects/index.html
 #
 # This file provides a clock and a screen for objects in a simulation world.  Additional utility procedures are also provided.
 
-# * skipping network-mode, whatever that is
+# TODO skipping network-mode, whatever that is
 
 class Screen(object):
     def __init__(self):
@@ -19,7 +19,7 @@ class Screen(object):
     
     def tell_world(self, text):
         print text
-    # * right now just print everything.
+    # TODO right now just print everything / later do what??
     def tell_room(self, location, text):
         print location
         print text
@@ -29,6 +29,8 @@ screen = Screen()
 # Clock
 # 
 # A Clock is an object with a notion of time, which it imparts to all objects that have asked for it.  It does this by invoking a list of CALLBACKs whenever the TICK method is invoked on the clock.  A CALLBACK is an action to invoke on each tick of the clock, by calling a method on an object
+
+# TODO is this the most elegant way to handle callbacks?
         
 class Clock(object):
     def __init__(self):
@@ -48,7 +50,7 @@ class Clock(object):
         for each in reversed(self.callbacks):
             if each not in self.removed_callbacks:
                 each.activate()
-        self.removed_callbacks = [] # * does this do things corrrectly??
+        self.removed_callbacks = [] # TODO does this do things corrrectly??
         self.time += 1
     
     def print_tick(self):
@@ -101,9 +103,44 @@ def run_clock(x):
         clock.tick()
         x -= 1
 
-# Utility procedures
+# Utilities
+
+# Given a list of objects, returns a list of their names.
+def names(objectlist):
+    namelist = [x.name for x in objectlist]
+    return namelist
+
+# Given a name and a list of objects, returns the object with that name.
+def objectfind(objectname, objectlist):
+    for each in objectlist:
+        if each.name == objectname:
+            return each
+    return None
+    
 def find_all(location, type):
     all = filter(lambda x: isinstance(x, type), location.things)
     return all
 
-# * consider adding remove_duplicates here?
+# Given a list of exits, find one in the desired direction.
+# TODO Add better handling for returning more than one exit here. Consider changing exits to be named by destination rather than direction??
+def find_exit(exitlist, dir):
+    if len(exitlist) > 0:
+        exit = filter(lambda each: each.direction == dir, exitlist)
+        if len(exit) == 1:
+            return exit[0]
+        elif len(exit) == 0:
+            print "No exits found in that direction."
+        else:
+            print "Exits in that direction lead to: "
+            for each in exit:
+                print each.destination.name
+            print "Please enter the index of the exit you want to use."
+            index = input()
+            return exit[index]
+    else:
+        print "No exit."
+
+def random_exit(place):
+    return random.choice(place.exits)
+
+# TODO consider adding remove_duplicates here?
