@@ -9,6 +9,10 @@ from __future__ import print_function
 
 # TODO skipping network-mode, whatever that is
 
+from builtins import str
+from builtins import filter
+from builtins import input
+from builtins import object
 class Screen(object):
     def __init__(self):
         self.deity_mode = True
@@ -73,7 +77,7 @@ class Clock(object):
                 return False
             else:
                 return True
-        self.callbacks = filter(rcb, self.callbacks)
+        self.callbacks = list(filter(rcb, self.callbacks))
         return "removed"
 
 # Clock callbacks
@@ -119,14 +123,14 @@ def objectfind(objectname, objectlist):
     return None
     
 def find_all(location, type):
-    all = filter(lambda x: isinstance(x, type), location.things)
+    all = [x for x in location.things if isinstance(x, type)]
     return all
 
 # Given a list of exits, find one in the desired direction.
 # TODO Add better handling for returning more than one exit here. Consider changing exits to be named by destination rather than direction??
 def find_exit(exitlist, dir):
     if len(exitlist) > 0:
-        exit = filter(lambda each: each.direction == dir, exitlist)
+        exit = [each for each in exitlist if each.direction == dir]
         if len(exit) == 1:
             return exit[0]
         elif len(exit) == 0:
@@ -136,7 +140,7 @@ def find_exit(exitlist, dir):
             for each in exit:
                 print(each.destination.name)
             print("Please enter the index of the exit you want to use.")
-            index = input()
+            index = eval(input())
             return exit[index]
     else:
         print("No exit.")

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from builtins import map
 from .objtypes import *
 
 def two_way_exit(origin, direction1, direction2, destination):
@@ -37,7 +38,7 @@ def create_world():
       world[p] = Place(p)
       world[p].install()
 
-    map(two_way_exit, exits)
+    list(map(two_way_exit, exits))
     # TODO factor out data into its own file and/or use a less clumsy structure to hold & install them
     # map(install, map(Thing, *things))
     
@@ -68,7 +69,7 @@ def populate_players(rooms):
     names = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-frosh", "lambda-man", "grumpy-grad-student"]
     vamp = random.choice(names)
     names.remove(vamp)
-    k = random.choice(rooms.keys())
+    k = random.choice(list(rooms.keys()))
     Vampire(vamp, rooms[k], False).install()
     for each in names:
         Autonomous_Person(each, rooms[k], random.randint(0, 3), random.randint(0, 3)).install()
@@ -80,6 +81,6 @@ def setup(name):
     rooms = create_world()
     #populate_weapons(rooms)
     populate_players(rooms)
-    me = Avatar(name, rooms[random.choice(rooms.keys())])
+    me = Avatar(name, rooms[random.choice(list(rooms.keys()))])
     screen.set_me(me)
     return me
