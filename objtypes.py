@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
 # objtypes.py
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
@@ -20,8 +18,6 @@ from __future__ import absolute_import
 # * add extension code from printout
 # * add text parser??
 
-from builtins import str
-from builtins import object
 import random
 from .objsys import *
 

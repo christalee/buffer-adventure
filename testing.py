@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from builtins import object
 import unittest, doctest
 from .objtypes import *
 
@@ -186,7 +184,7 @@ class ExitTest(unittest.TestCase):
         self.assertEqual(self.location1.exits, [self.exit])
     
     def test_exit_use(self):
-        #this method nearly entirely calls methods from the Person class, so I'm not sure it makes sense to test it here??
+        # this method nearly entirely calls methods from the Person class, so I'm not sure it makes sense to test it here??
         
         self.exit.install()
         self.user.install()
@@ -243,7 +241,6 @@ class PersonTest(unittest.TestCase):
     def test_take(self):
         self.person1.take(self.thing2)
         ###assertEqual(self.thing2.location, self.person1)
-    
     
 
 class UtilsTest(unittest.TestCase):

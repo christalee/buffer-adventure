@@ -1,4 +1,3 @@
-from __future__ import print_function
 # objsys.py
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
@@ -9,10 +8,6 @@ from __future__ import print_function
 
 # TODO skipping network-mode, whatever that is
 
-from builtins import str
-from builtins import filter
-from builtins import input
-from builtins import object
 class Screen(object):
     def __init__(self):
         self.deity_mode = True
@@ -29,7 +24,6 @@ class Screen(object):
         print(location)
         print(text)
 
-screen = Screen()
 # --------------------
 # Clock
 # 
