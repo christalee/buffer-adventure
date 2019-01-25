@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 # objtypes.py
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
@@ -19,7 +21,7 @@
 # * add text parser??
 
 import random
-from objsys import *
+from .objsys import *
 
 # --------------------
 # Named_Object
@@ -38,11 +40,11 @@ class Named_Object(object):
     
     def install(self):
         self.isInstalled = True
-        print self.name + " installed!"
+        print(self.name + " installed!")
     
     def delete(self):
         self.isInstalled = False
-        print self.name + " deleted!"
+        print(self.name + " deleted!")
 
 # --------------------
 # Container
@@ -132,7 +134,7 @@ class Place(Container, Named_Object):
             self.exits.append(exit)
             return "done"
         else:
-            print self.name + " already has exit to " + exit.name
+            print(self.name + " already has exit to " + exit.name)
 
 # ------------------------------------------------------------
 # Exit
@@ -204,7 +206,7 @@ class Person(Container, Mobile_Thing):
             for item in names(each.things):
                 itemlist.append(item)
             all_items.append(itemlist)
-            print each.name + " has " + ", ".join(itemlist)
+            print(each.name + " has " + ", ".join(itemlist))
         return all_items
     
     def take(self, itemname):

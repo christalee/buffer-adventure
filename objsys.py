@@ -1,3 +1,4 @@
+from __future__ import print_function
 # objsys.py
 # Christalee Bieber, 2016
 # cbieber@alum.mit.edu
@@ -18,11 +19,11 @@ class Screen(object):
         self.me = new_me
     
     def tell_world(self, text):
-        print text
+        print(text)
     # TODO right now just print everything / later do what??
     def tell_room(self, location, text):
-        print location
-        print text
+        print(location)
+        print(text)
 
 screen = Screen()
 # --------------------
@@ -63,7 +64,7 @@ class Clock(object):
             else:
                 self.callbacks.append(cb)
         else:
-            print "That is not a callback."
+            print("That is not a callback.")
 
     def remove_callback(self, obj, cb_name):
         def rcb(x):
@@ -88,7 +89,7 @@ class Clock_CB(object):
     
     def install(self):
         self.isInstalled = True
-        print self.name + " installed!"
+        print(self.name + " installed!")
     
     def activate(self):
         getattr(self.object, self.message)()
@@ -129,16 +130,16 @@ def find_exit(exitlist, dir):
         if len(exit) == 1:
             return exit[0]
         elif len(exit) == 0:
-            print "No exits found in that direction."
+            print("No exits found in that direction.")
         else:
-            print "Exits in that direction lead to: "
+            print("Exits in that direction lead to: ")
             for each in exit:
-                print each.destination.name
-            print "Please enter the index of the exit you want to use."
+                print(each.destination.name)
+            print("Please enter the index of the exit you want to use.")
             index = input()
             return exit[index]
     else:
-        print "No exit."
+        print("No exit.")
 
 def random_exit(place):
     return random.choice(place.exits)

@@ -1,13 +1,14 @@
-from objtypes import *
+from __future__ import absolute_import
+from .objtypes import *
 
 def two_way_exit(origin, direction1, direction2, destination):
     """Installs an Exit in """
     Exit(world[origin], direction1, world[destination]).install()
     Exit(world[destination], direction2, world[origin]).install()
 
-def places = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301"]
+places = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301"]
 
-def exits =   [["lobby-10", "up", "down", "10-250"],
+exits =   [["lobby-10", "up", "down", "10-250"],
               ["grendels-den", "up", "down", "lobby-10"],
               ["10-250", "up", "down", "barker-library"],
               ["lobby-10", "west", "east", "lobby-7"],

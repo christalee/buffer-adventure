@@ -1,5 +1,6 @@
+from __future__ import absolute_import
 import unittest, doctest
-from objtypes import *
+from .objtypes import *
 
 class TestScreen(object):
     def __init__(self):
@@ -199,6 +200,7 @@ class ExitTest(unittest.TestCase):
     
 class PersonTest(unittest.TestCase):
     def setUp(self):
+        global screen
         self.location = Place("New York")
         #self.location2 = Place("Toronto")
         self.person1 = Person("Alice", self.location)
@@ -211,7 +213,7 @@ class PersonTest(unittest.TestCase):
         self.thing1.install()
         self.thing2.install()
         self.thing3.install()
-        global screen = TestScreen()
+        screen = TestScreen()
     
     def test_inits(self):
         self.assertEqual(self.person.health, 3)
@@ -231,7 +233,7 @@ class PersonTest(unittest.TestCase):
         self.assertEqual(self.person1.people_around(), [self.person2])
     
     def test_things_around(self):
-        self.assertEqual(set(self.person1.things_around()), set([self.thing1, self.thing2, self.thing3])
+        self.assertEqual(set(self.person1.things_around()), set([self.thing1, self.thing2, self.thing3]))
     
     def test_peek_around(self):
         self.person1.take(self.thing2)
@@ -268,7 +270,7 @@ class UtilsTest(unittest.TestCase):
     def test_random_exit(self):
         self.exit1.install()
         self.exit2.install()
-        self.assertTrue(random_exit(location1) is in self.exitlist)
+        self.assertTrue(random_exit(location1) in self.exitlist)
         
 if __name__ == '__main__':
     unittest.main()
