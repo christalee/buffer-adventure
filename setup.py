@@ -1,55 +1,80 @@
-from .objtypes import *
+import random
+import sys
+
 import data
+from objects import *
+
 
 def create_world():
-    """create_world() returns a list holding all installed Places (with Exits), Things, and Mobile_Things."""
-    world = {}
+    """Return a dict holding all installed Places (with Exits), Things, and Mobile_Things."""
+    w = {}
     for p in data.places:
-      world[p] = Place(p)
-      world[p].install()
-    
-    for e in data.exits:
-      populate_exits(*e)
-    
-    for t in data.things:
-      Thing(t['name'], world[t['place']]).install()
-    
-    for m in data.mobile_things:
-      Mobile_Thing(m['name'], world[m['place']]).install()
-    
-    return world
+        w[p] = Place(p)
+        w[p].install()
 
-# TODO modify Exit to be more parallel to Weapon and Thing??
-def populate_exits(origin, direction1, direction2, destination):
-    """Installs an Exit in """
-    Exit(world[origin], direction1, world[destination]).install()
-    Exit(world[destination], direction2, world[origin]).install()
+    for e in data.exits:
+        populate_exits(*e)
+
+    for t in data.things:
+        Thing(t['name'], w[t['place']]).install()
+
+    for m in data.mobile_things:
+        Mobile_Thing(m['name'], w[m['place']]).install()
+
+    return w
+
+
+def populate_exits(origin: str, direction1: str, direction2: str, destination: str):
+    # TODO modify Exit to be more parallel to Weapon and Thing??
+    """Install an Exit between two Places."""
+    global world
+    w = world.places
+    Exit(w[origin], direction1, w[destination]).install()
+    Exit(w[destination], direction2, w[origin]).install()
+
 
 def populate_weapons(rooms):
-  for w in data.weapons:
-    Weapon(w['name'], random.choice(rooms), w['damage']).install()
-  return "populated-weapons"
+    for w in data.weapons:
+        Weapon(w['name'], random.choice(rooms.values()), w['damage']).install()
+
 
 def populate_players(rooms):
     names = data.names
     vamp = random.choice(names)
     names.remove(vamp)
-    k = random.choice(list(rooms.keys()))
+    k = random.choice(rooms.values())
     Vampire(vamp, rooms[k], False).install()
     for each in names:
         Autonomous_Person(each, rooms[k], random.randint(0, 3), random.randint(0, 3)).install()
-    return "populated-players"
 
-# TODO get name from player input
-def setup(name):
+
+def setup():
+    global world
+    world.places = create_world()
+
+    clock = Clock()
     clock.reset()
-    clock.add_callback(Clock_CB("tick-printer", clock, "print_tick"))
-    rooms = create_world()
-    populate_weapons(rooms)
-    populate_players(rooms)
-    me = Avatar(name, rooms[random.choice(list(rooms.keys()))])
-    screen.set_me(me)
-    return me
+    clock.add_callback(Callback("tick-printer", clock, "print_tick"))
 
-screen = Screen()
-setup('Talia')
+    print('The Adventures of Buffer the Vampire Slayer')
+    name = input('player name: ')
+    player = Avatar(name, random.choice(world.places.values()))
+    world.player = player
+
+    # populate_weapons(world.places)
+    populate_players(world.places)
+
+    return world, clock
+
+
+world = World()
+world, clock = setup()
+while True:
+    # global world, clock
+    action = input('What would you like to do?')
+    if action == 'q':
+        break
+    if action in ['up', 'down', 'north', 'south', 'east', 'west']:
+        world.player.go(action)
+    if action == 'look':
+        world.player.look()
