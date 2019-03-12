@@ -5,28 +5,29 @@ names: List[str] = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-fr
 places: List[str] = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301"]
 
 # TODO consider reformatting these as dicts
-# [origin, direction1, direction2, destination],
-exits: List[List[str]] = [["lobby-10", "up", "down", "10-250"],
-                          ["grendels-den", "up", "down", "lobby-10"],
-                          ["10-250", "up", "down", "barker-library"],
-                          ["lobby-10", "west", "east", "lobby-7"],
-                          ["lobby-7", "west", "east", "student-center"],
-                          ["student-center", "south", "north", "bexley"],
-                          ["bexley", "west", "east", "baker"],
-                          ["lobby-10", "north", "south", "building-13"],
-                          ["lobby-10", "south", "north", "great-court"],
-                          ["building-13", "north", "south", "edgerton-hall"],
-                          ["edgerton-hall", "up", "down", "34-301"],
-                          ["34-301", "up", "down", "eecs-hq"],
-                          ["34-301", "east", "west", "stata-center"],
-                          ["stata-center", "north", "south", "stata-center"],
-                          ["stata-center", "up", "down", "stata-center"],
-                          ["eecs-hq", "west", "east", "eecs-ug-office"],
-                          ["edgerton-hall", "north", "south", "legal-seafood"],
-                          ["eecs-hq", "up", "down", "6001-lab"],
-                          ["legal-seafood", "east", "west", "great-court"],
-                          ["great-court", "up", "down", "graduation-stage"]
-                          ]
+# {'origin': , 'direction1': , 'direction2': , 'destination': },
+exits: List[Dict[str, str]] = [
+    {'origin': "lobby-10", 'direction1': "up", 'direction2': "down", 'destination': "10-250"},
+    {'origin': "grendels-den", 'direction1': "up", 'direction2': "down", 'destination': "lobby-10"},
+    {'origin': "10-250", 'direction1': "up", 'direction2': "down", 'destination': "barker-library"},
+    {'origin': "lobby-10", 'direction1': "west", 'direction2': "east", 'destination': "lobby-7"},
+    {'origin': "lobby-7", 'direction1': "west", 'direction2': "east", 'destination': "student-center"},
+    {'origin': "student-center", 'direction1': "south", 'direction2': "north", 'destination': "bexley"},
+    {'origin': "bexley", 'direction1': "west", 'direction2': "east", 'destination': "baker"},
+    {'origin': "lobby-10", 'direction1': "north", 'direction2': "south", 'destination': "building-13"},
+    {'origin': "lobby-10", 'direction1': "south", 'direction2': "north", 'destination': "great-court"},
+    {'origin': "building-13", 'direction1': "north", 'direction2': "south", 'destination': "edgerton-hall"},
+    {'origin': "edgerton-hall", 'direction1': "up", 'direction2': "down", 'destination': "34-301"},
+    {'origin': "34-301", 'direction1': "up", 'direction2': "down", 'destination': "eecs-hq"},
+    {'origin': "34-301", 'direction1': "east", 'direction2': "west", 'destination': "stata-center"},
+    {'origin': "stata-center", 'direction1': "north", 'direction2': "south", 'destination': "stata-center"},
+    {'origin': "stata-center", 'direction1': "up", 'direction2': "down", 'destination': "stata-center"},
+    {'origin': "eecs-hq", 'direction1': "west", 'direction2': "east", 'destination': "eecs-ug-office"},
+    {'origin': "edgerton-hall", 'direction1': "north", 'direction2': "south", 'destination': "legal-seafood"},
+    {'origin': "eecs-hq", 'direction1': "up", 'direction2': "down", 'destination': "6001-lab"},
+    {'origin': "legal-seafood", 'direction1': "east", 'direction2': "west", 'destination': "great-court"},
+    {'origin': "great-court", 'direction1': "up", 'direction2': "down", 'destination': "graduation-stage"}
+]
 
 # {'name': , 'place': },
 things: List[Dict[str, str]] = [{'name': "blackboard", 'place': "10-250"},

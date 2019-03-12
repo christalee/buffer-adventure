@@ -6,3 +6,4 @@ ch11_world/
 venv/
 *.bak
 *cache*
+.ipynb_checkpoints

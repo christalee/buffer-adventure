@@ -20,53 +20,55 @@
 # remove unneeded isinstance checks
 # replace Callback with actual callbacks?
 # replace for each with better loop variable names
-
+# TODO should Named_Object and/or Container be abstract base classes?
+# Do I need these install() methods?
 
 # TODO skipping network-mode, whatever that is
 
 import random
 from typing import Dict, List, Optional, TypeVar, Union
 
+from utilities import *
 
-class World:
-    """This is a singleton object (only one object of this type in existence at any time), which deals with outputting text to the user.
-
-    If the world is in deity-mode, the user will hear every message, regardless of the location of the avatar. If deity-mode is False, only messages sent to the room which contains the avatar will be heard."""
-
-    def __init__(self):
-        self.deity_mode: bool = True
-        self.player: Optional['Avatar'] = None
-        self.name: str = "the world"
-        self.places: Dict[str, Place] = {}
-
-    def set_player(self, player: 'Avatar'):
-        self.player = player
-
-    def tell_world(self, text: str):
-        print(text)
-
-    def tell_room(self, location, text: str):
-        # TODO right now just print everything / later do what??
-        print(location)
-        print(text)
-
-# TODO is this the most elegant way to handle callbacks?
+#
+# class World:
+#     """This is a singleton object (only one object of this type in existence at any time), which deals with outputting text to the user.
+#
+#     If the world is in deity-mode, the user will hear every message, regardless of the location of the avatar. If deity-mode is False, only messages sent to the room which contains the avatar will be heard."""
+#
+#     def __init__(self):
+#         self.deity_mode: bool = True
+#         self.player: Optional['Avatar'] = None
+#         self.name: str = "the world"
+#         self.places: Dict[str, Place] = {}
+#
+#     def set_player(self, player: 'Avatar'):
+#         self.player = player
+#
+#     def tell_world(self, text: str):
+#         print(text)
+#
+#     def tell_room(self, location, text: str):
+#         # TODO right now just print everything / later do what??
+#         print(location)
+#         print(text)
 
 
 class Callback:
-    """A Callback stores a target object, method, and arguments.  When activated, it executes the method on the target object.  It can be thought of as a button that executes an action at every tick of the clock."""
-
-    global world
+    """A Callback stores a target object, method, and arguments. When activated, it executes the method on the target object. It can be thought of as a button that executes an action at every tick of the clock."""
 
     def __init__(self, name: str, obj: 'Named_Object', msg: str):
-        self.name = name
+        self.name = "Callback " + name
         self.object = obj
         self.message = msg
         self.isInstalled: bool = False
 
+    def __repr__(self):
+        return self.name
+
     def install(self):
         self.isInstalled = True
-        world.tell_world(self.name + " installed!")
+        print(self.name + " installed!")
 
     def activate(self):
         getattr(self.object, self.message)()
@@ -75,13 +77,14 @@ class Callback:
 class Clock:
     """A Clock is an object with a notion of time, which it imparts to all objects that have asked for it. It does this by invoking a list of Callbacks whenever the tick() method is invoked."""
 
-    global world
-
     def __init__(self):
         self.name: str = "the clock"
         self.time: int = 0
         self.callbacks: List[Callback] = []
         self.removed_callbacks: List[Callback] = []
+
+    def __repr__(self):
+        return self.name
 
     def install(self):
         self.add_callback(Callback("tick-printer", self, "print_tick"))
@@ -98,14 +101,14 @@ class Clock:
         self.time += 1
 
     def print_tick(self):
-        world.tell_world("---" + self.name + " Tick " + str(self.time) + "---")
+        print("---" + self.name + " Tick " + str(self.time) + "---")
 
     def add_callback(self, cb: Callback):
         if cb in self.callbacks:
-            world.tell_world(cb.name + "already present")
+            print(cb.name + "already exists")
         else:
             self.callbacks.append(cb)
-            world.tell_world(cb.name + " added")
+            print(cb.name + " added")
 
     def remove_callback(self, obj: 'Named_Object', cb_name: str):
         def rcb(x: Callback):
@@ -115,10 +118,7 @@ class Clock:
             else:
                 return True
         self.callbacks = list(filter(rcb, self.callbacks))
-        world.tell_world(cb_name + " removed")
-
-
-# TODO should Named_Object and/or Container be abstract base classes?
+        print(cb_name + " removed")
 
 
 class Named_Object:
@@ -129,19 +129,21 @@ class Named_Object:
     - Handles an install message
     - Handles a delete message"""
 
-    global world, clock
-
     def __init__(self, name):
         self.name: str = name
         self.isInstalled: bool = False
 
+    def __repr__(self):
+        return self.name
+
     def install(self):
         self.isInstalled = True
-        world.tell_world(self.name + " installed!")
+        print(self.name + " installed!")
 
     def delete(self):
+        # TODO should this actually delete the object?
         self.isInstalled = False
-        world.tell_world(self.name + " deleted!")
+        print(self.name + " deleted!")
 
 
 class Container:
@@ -149,6 +151,7 @@ class Container:
 
     This class is not meant for "stand-alone" objects; rather, it is expected that other classes will inherit from the Container class in order to be able to contain Things."""
 
+    # TODO is there any point in having this instead of just using a list?
     def __init__(self):
         self.things: List['Thing'] = []
 
@@ -157,13 +160,14 @@ class Container:
             return True
         else:
             return False
-# TODO should these also world.tell_world()?
 
     def add_thing(self, x: 'Thing'):
+        # TODO should these also world.tell_world()?
         if not self.have_thing(x):
             self.things.append(x)
 
     def delete_thing(self, x: 'Thing'):
+        # TODO should these also world.tell_world()?
         if self.have_thing(x):
             self.things.remove(x)
 
@@ -182,17 +186,16 @@ class Thing(Named_Object):
     def delete(self):
         self.location.delete_thing(self)
         super(Thing, self).delete()
-# TODO should this be renamed say, in parallel to Person.say()?
 
     def emit(self, text: str):
-        world.tell_room(self.location, "At " + self.location.name + " " + text)
-
-
-# TODO figure out how to handle locations of Mobile_Things
-# Mobile_Place = TypeVar('Mobile_Place', Place, Person)
+        # TODO should this be renamed say, in parallel to Person.say()?
+        # TODO tell_room()
+        print(self.location, "At " + self.location.name + " " + text)
 
 
 class Mobile_Thing(Thing):
+    # TODO figure out how to handle locations of Mobile_Things
+    # Mobile_Place = TypeVar('Mobile_Place', Place, Person)
     """A Mobile_Thing is a Thing that has a location that can change."""
 
     def __init__(self, name: str, location: 'Place'):
@@ -204,19 +207,20 @@ class Mobile_Thing(Thing):
         self.location.delete_thing(self)
         new_location.add_thing(self)
         self.location = new_location
-# TODO are these methods necessary?
 
     def enter_room(self):
+        # TODO are these methods necessary? cf. Person.enter_room()
         return True
 
     def leave_room(self):
+        # TODO are these methods necessary? cf. Person.leave_room()
         return True
 
 
 class Place(Container, Named_Object):
     """A Place is a Container (so Things may be in the Place).
 
-    A Place has Exits, which are passages from one place to another.  One can retrieve all of the Exits of a Place, or an Exit in a given direction from Place."""
+    A Place has Exits, which are passages from one place to another. One can retrieve all of the Exits of a Place, or an Exit in a given direction from Place."""
 
     def __init__(self, name: str):
         self.exits: List[Exit] = []
@@ -229,9 +233,9 @@ class Place(Container, Named_Object):
     def add_exit(self, exit: 'Exit'):
         if exit not in self.exits:
             self.exits.append(exit)
-            world.tell_world(exit.name + " added at " + self.name)
+            print(exit.name + " added at " + self.name)
         else:
-            world.tell_world(self.name + " already has exit to " + exit.name)
+            print(self.name + " already has exit to " + exit.name)
 
 
 class Exit(Named_Object):
@@ -248,17 +252,17 @@ class Exit(Named_Object):
             if self.origin.add_exit(self):
                 super(Exit, self).install()
 
-    # TODO what does leave_room even do?? is it meant to be superseded in Person?
-    # TODO Check that the Place stops having the Person when they use the Exit??
     def use(self, who: 'Person'):
+        # TODO Check that the Place stops having the Person when they use the Exit
         who.leave_room()
-        world.tell_room(who.location, who.name + " moves from " + who.location.name + " to " + self.destination.name)
+        # TODO tell_room()
+        print(who.location, who.name + " moves from " + who.location.name + " to " + self.destination.name)
         who.change_location(self.destination)
         who.enter_room()
 
 
 # There are several kinds of Person:
-# There are Autonomous_Persons, including Vampires, and there is the Avatar of the user.  The foundation is here.
+# There are Autonomous_Persons, including Vampires, and there is the Avatar of the user. The foundation is here.
 
 
 class Person(Container, Mobile_Thing):
@@ -272,7 +276,8 @@ class Person(Container, Mobile_Thing):
         # self.things: List[Mobile_Thing]
 
     def say(self, text: str):
-        world.tell_room(self.location, "At " + self.location.name + " " + self.name + " says: " + text)
+        # TODO tell_room()
+        print(self.location, "At " + self.location.name + " " + self.name + " says: " + text)
 
     def have_fit(self):
         self.say("Yaaaah! I am upset!")
@@ -281,7 +286,7 @@ class Person(Container, Mobile_Thing):
     def people_around(self):
         people: List[Person] = []
         for each in self.location.things:
-            if each != self:
+            if each != self and isinstance(each, Person):
                 people.append(each)
         return people
 
@@ -295,12 +300,12 @@ class Person(Container, Mobile_Thing):
     def peek_around(self):
         all_items: List[List[str]] = []
         for each in self.people_around():
-            itemlist: List[str] = []
-            for item in names(each.things):
-                itemlist.append(item)
+            itemlist: List[str] = names(each.things)
+            if len(itemlist) > 0:
+                self.say(each.name + " has " + ", ".join(itemlist))
             all_items.append(itemlist)
-            self.say(each.name + " has " + ", ".join(itemlist))
-        world.tell_room(all_items)
+        # TODO tell_room()
+        return all_items
 
     def take(self, itemname: str):
         item = thingfind(itemname, self.location.things)
@@ -327,8 +332,8 @@ class Person(Container, Mobile_Thing):
         self.have_fit()
         item.change_location(destination)
 
-    # TODO clarify that self.things only ever contains Mobile_Things
     def drop(self, itemname: str):
+        # TODO clarify that self.things only ever contains Mobile_Things
         item = thingfind(itemname, self.things)
         if not item:
             self.say("I don't have that item!")
@@ -347,7 +352,8 @@ class Person(Container, Mobile_Thing):
             self.go_exit(exit)
             return True
         else:
-            world.tell_room(self.location, "No exit in " + direction + " direction")
+            # TODO tell_room()
+            print(self.location, "No exit in " + direction + " direction")
             return False
 
     def suffer(self, hits: int, perp):
@@ -355,21 +361,21 @@ class Person(Container, Mobile_Thing):
         self.health -= hits
         if self.health <= 0:
             self.die(perp)
-        world.tell_room('Health: ' + str(self.health))
+        print('Health: ' + str(self.health))
 
     def die(self, perp):
         for each in self.things:
             self.lose(each, self.location)
-        world.tell_world("An earth-shattering, soul-piercing scream is heard...")
+        print("An earth-shattering, soul-piercing scream is heard...")
         self.create_body(perp)
         self.delete()
-    # * Probably need to change this to create an instance of Body too
 
     def create_body(self, perp):
+        # TODO combine die() with create_body()?
         Body(self.name, self.location, perp).install()
-# TODO write leave_room? get rid of enter_room?
 
     def enter_room(self):
+        # TODO write leave_room? get rid of enter_room? cf. Exit.use()
         others = self.people_around()
         if len(others) > 0:
             self.say("Hi " + ", ".join(names(others)))
@@ -387,8 +393,8 @@ class Autonomous_Person(Person):
         self.miserly = miserly
         super(Autonomous_Person, self).__init__(name, birthplace)
 
-    # TODO revisit this when clock is invented
     def install(self):
+        # global clock
         super(Autonomous_Person, self).install()
         clock.add_callback(Callback("move-and-take", self, "move_and_take"))
 
@@ -402,6 +408,7 @@ class Autonomous_Person(Person):
         self.say(self.name + " done moving for this tick")
 
     def die(self, perp):
+        # global clock
         clock.remove_callback(self, "move-and-take")
         self.say("SHREEEEK! I, uh, suddenly feel very faint...")
         super(Autonomous_Person, self).die(perp)
@@ -418,15 +425,16 @@ class Autonomous_Person(Person):
 
 
 class Body(Thing):
-    """A Thing which has the potential to rise as a vampire"""
+    """A Thing which has the potential to rise as a Vampire"""
 
     def __init__(self, name: str, location: Place, perp):
         self.age: int = 0
         self.perp = perp
         super(Body, self).__init__(name, location)
-        self.name = "body of " + super(Body, self).name
+        self.name = "body of " + name
 
     def install(self):
+        # global clock
         super(Body, self).install()
         if isinstance(self.perp, Vampire):
             clock.add_callback(Callback(str(self.name), self, "wait"))
@@ -439,6 +447,7 @@ class Body(Thing):
             Vampire(self.name, self.location, self.perp).install()
 
     def delete(self):
+        # global clock
         clock.remove_callback(self, str(self.name))
         super(Body, self).delete()
 
@@ -455,12 +464,14 @@ class Vampire(Person):
         super(Vampire, self).__init__(name, birthplace)
 
     def install(self):
+        # global clock
         super(Vampire, self).install()
         if self.sire:
             self.sire.gain_power()
         clock.add_callback(Callback("rove-and-attack", self, "rove_and_attack"))
 
     def die(self, perp):
+        # global clock
         clock.remove_callback(self, "rove-and-attack")
         super(Vampire, self).die(perp)
 
@@ -469,7 +480,7 @@ class Vampire(Person):
 
     def gain_power(self):
         self.power += 1
-        world.tell_world(self.name + " gained power")
+        print(self.name + " gained power")
 
     def rove_and_attack(self):
         if random.randint(0, 2) == 0:
@@ -487,7 +498,7 @@ class Vampire(Person):
             victim = random.choice(others)
             self.emit(self.name + " bites " + victim.name + "!")
             victim.suffer(random.randint(0, self.power), self)
-        world.tell_world(self.name + " is tired")
+        print(self.name + " is tired")
 
 
 class Avatar(Person):
@@ -497,30 +508,34 @@ class Avatar(Person):
         super(Avatar, self).__init__(name, birthplace)
 
     def look(self):
-        world.tell_world("You are in " + self.location.name)
+        print("You are in " + self.location.name)
         if len(self.things) > 0:
-            world.tell_world("You are holding: " + ", ".join(names(self.things)))
+            print("You are holding: " + ", ".join(names(self.things)))
         else:
-            world.tell_world("You are not holding anything.")
+            print("You are not holding anything.")
         if len(self.things_around()) > 0:
-            world.tell_world("You see stuff in the room: " + ", ".join(names(self.things_around())))
+            print("You see stuff in the room: " + ", ".join(names(self.things_around())))
         else:
-            world.tell_world("There is no stuff in the room.")
+            print("There is no stuff in the room.")
         if len(self.people_around()) > 0:
-            world.tell_world("You see other people: " + ", ".join(names(self.people_around())))
+            print("You see other people: " + ", ".join(names(self.people_around())))
         else:
-            world.tell_world("There are no other people around you.")
+            print("There are no other people around you.")
         if len(self.location.exits) > 0:
-            world.tell_world("The exits are in directions: " + ", ".join(names(self.location.exits)))
+            print("The exits are in directions: " + ", ".join(names(self.location.exits)))
         else:
-            world.tell_world("There are no exits... you are dead and gone to heaven!")
+            print("There are no exits... you are dead and gone to heaven!")
 
     def go(self, direction: str):
         success: bool = super(Avatar, self).go(direction)
         if success:
+            # global clock
             clock.tick()
         return success
 
     def die(self, perp):
         self.say("I am slain!")
         super(Avatar, self).die(perp)
+
+
+clock = Clock()
