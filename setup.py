@@ -63,17 +63,17 @@ def setup():
     return world, player
 
 
-# clock = Clock()
 world, player = setup()
 while True:
     action = input('What would you like to do? ')
-    if action == 'q' or 'quit' or 'exit':
+    if action in ['q', 'quit', 'exit']:
         break
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
-    # if action.startswith('go'):
-    #     direction = action.strip('go ')
-    #     player.go(direction)
+    if action in ['i', 'inventory']:
+        print(player.things)
+    if action in ['?', 'h', 'help']:
+        print(dir(player))
     if ' ' in action:
         verb, object = action.split(' ')
         if hasattr(player, verb):

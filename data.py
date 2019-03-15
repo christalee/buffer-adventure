@@ -4,7 +4,6 @@ names: List[str] = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-fr
 
 places: List[str] = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301"]
 
-# TODO consider reformatting these as dicts
 # {'origin': , 'direction1': , 'direction2': , 'destination': },
 exits: List[Dict[str, str]] = [
     {'origin': "lobby-10", 'direction1': "up", 'direction2': "down", 'destination': "10-250"},

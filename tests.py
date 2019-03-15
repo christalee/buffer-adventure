@@ -1,18 +1,19 @@
-import doctest
-import unittest
+# import doctest
+# import unittest
 
-from objects import *
+import objects as o
+import setup as s
+import utilities as u
 
-
-class TestWorld():
-    def __init__(self):
-        self.buffer = []
-
-    def tell_room(self, location, text):
-        self.buffer.append([location, text])
-
-    def lastsaid(self):
-        return self.buffer[0]
+# class TestWorld():
+#     def __init__(self):
+#         self.buffer = []
+#
+#     def tell_room(self, location, text):
+#         self.buffer.append([location, text])
+#
+#     def lastsaid(self):
+#         return self.buffer[0]
 
 #w = create_world()
 #s = w["10-250"]

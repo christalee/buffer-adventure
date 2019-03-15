@@ -5,12 +5,10 @@
 # This file defines a clock and a screen that act as the game world, plus classes for game objects.
 
 # * TODO
-# * decide how I want to interact with the game during dev & prod
-# * migrate to python 3.6 at least
-# * pick a docstring convention and stick with it
 # * scan & transcribe/OCR printout
 # * Resolve all TODO / comments
 # * write a test suite
+# write methods to list player commands, inventory
 # * add type signatures to everything
 # * add extension code from printout
 # * add text parser??
@@ -21,7 +19,12 @@
 # replace Callback with actual callbacks?
 # replace for each with better loop variable names
 # TODO should Named_Object and/or Container be abstract base classes?
-# Do I need these install() methods?
+# should Container just be... a list?
+# Do I need these install() methods? Should delete() actually del(object)?
+
+# * DONE decide how I want to interact with the game during dev & prod
+# * DONE migrate to python 3.6 at least
+# * DONE pick a docstring convention and stick with it
 
 # TODO skipping network-mode, whatever that is
 
@@ -29,29 +32,6 @@ import random
 from typing import Dict, List, Optional, TypeVar, Union
 
 from utilities import *
-
-#
-# class World:
-#     """This is a singleton object (only one object of this type in existence at any time), which deals with outputting text to the user.
-#
-#     If the world is in deity-mode, the user will hear every message, regardless of the location of the avatar. If deity-mode is False, only messages sent to the room which contains the avatar will be heard."""
-#
-#     def __init__(self):
-#         self.deity_mode: bool = True
-#         self.player: Optional['Avatar'] = None
-#         self.name: str = "the world"
-#         self.places: Dict[str, Place] = {}
-#
-#     def set_player(self, player: 'Avatar'):
-#         self.player = player
-#
-#     def tell_world(self, text: str):
-#         print(text)
-#
-#     def tell_room(self, location, text: str):
-#         # TODO right now just print everything / later do what??
-#         print(location)
-#         print(text)
 
 
 class Callback:
