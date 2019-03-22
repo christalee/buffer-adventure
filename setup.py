@@ -1,5 +1,4 @@
 import random
-import sys
 
 import data
 from objects import *
@@ -47,7 +46,7 @@ def create_people(world):
 
 def setup():
     clock.reset()
-    clock.add_callback(Callback("tick-printer", clock, "print_tick"))
+    clock.add_callback(clock.print_tick)
 
     world = create_world()
     create_things(world)
@@ -71,7 +70,7 @@ while True:
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
     if action in ['i', 'inventory']:
-        print(player.things)
+        print('Inventory: ' + ','.join(names(player.things)))
     if action in ['?', 'h', 'help']:
         print(dir(player))
     if ' ' in action:

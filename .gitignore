@@ -7,3 +7,4 @@ venv/
 *.bak
 *cache*
 .ipynb_checkpoints
+.imdone

@@ -4,101 +4,14 @@
 #
 # This file defines a clock and a screen that act as the game world, plus classes for game objects.
 
-# * TODO
-# * scan & transcribe/OCR printout
-# * Resolve all TODO / comments
-# * write a test suite
-# write methods to list player commands, inventory
-# * add type signatures to everything
-# * add extension code from printout
-# * add text parser??
-# TODO get clear on return / print / say/emit/tell values
-# TODO Currently everything is printed to global output; eventually it should be restricted to a single location (look for calls to screen and/or 'TELL-ROOM)
-# add code to ensure that there's only one World at a time? only one Clock? Avatar? Or at least World / Clock / Avatar go together?
-# remove unneeded isinstance checks
-# replace Callback with actual callbacks?
-# replace for each with better loop variable names
-# TODO should Named_Object and/or Container be abstract base classes?
-# should Container just be... a list?
-# Do I need these install() methods? Should delete() actually del(object)?
-
-# * DONE decide how I want to interact with the game during dev & prod
-# * DONE migrate to python 3.6 at least
-# * DONE pick a docstring convention and stick with it
-
 # TODO skipping network-mode, whatever that is
 
 import random
-from typing import Dict, List, Optional, TypeVar, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from utilities import *
 
-
-class Callback:
-    """A Callback stores a target object, method, and arguments. When activated, it executes the method on the target object. It can be thought of as a button that executes an action at every tick of the clock."""
-
-    def __init__(self, name: str, obj: 'Named_Object', msg: str):
-        self.name = "Callback " + name
-        self.object = obj
-        self.message = msg
-        self.isInstalled: bool = False
-
-    def __repr__(self):
-        return self.name
-
-    def install(self):
-        self.isInstalled = True
-        print(self.name + " installed!")
-
-    def activate(self):
-        getattr(self.object, self.message)()
-
-
-class Clock:
-    """A Clock is an object with a notion of time, which it imparts to all objects that have asked for it. It does this by invoking a list of Callbacks whenever the tick() method is invoked."""
-
-    def __init__(self):
-        self.name: str = "the clock"
-        self.time: int = 0
-        self.callbacks: List[Callback] = []
-        self.removed_callbacks: List[Callback] = []
-
-    def __repr__(self):
-        return self.name
-
-    def install(self):
-        self.add_callback(Callback("tick-printer", self, "print_tick"))
-
-    def reset(self):
-        self.time = 0
-        self.callbacks = []
-
-    def tick(self):
-        for each in reversed(self.callbacks):
-            if each not in self.removed_callbacks:
-                each.activate()
-        self.removed_callbacks = []  # TODO does this do things correctly??
-        self.time += 1
-
-    def print_tick(self):
-        print("---" + self.name + " Tick " + str(self.time) + "---")
-
-    def add_callback(self, cb: Callback):
-        if cb in self.callbacks:
-            print(cb.name + "already exists")
-        else:
-            self.callbacks.append(cb)
-            print(cb.name + " added")
-
-    def remove_callback(self, obj: 'Named_Object', cb_name: str):
-        def rcb(x: Callback):
-            if x.name == cb_name and x.object == obj:
-                self.removed_callbacks.append(x)
-                return False
-            else:
-                return True
-        self.callbacks = list(filter(rcb, self.callbacks))
-        print(cb_name + " removed")
+DEBUG: bool = True
 
 
 class Named_Object:
@@ -109,21 +22,23 @@ class Named_Object:
     - Handles an install message
     - Handles a delete message"""
 
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         self.name: str = name
         self.isInstalled: bool = False
 
     def __repr__(self):
         return self.name
 
-    def install(self):
+    def install(self) -> None:
         self.isInstalled = True
-        print(self.name + " installed!")
+        if DEBUG:
+            print(self.name + " installed!")
 
-    def delete(self):
+    def delete(self) -> None:
         # TODO should this actually delete the object?
         self.isInstalled = False
-        print(self.name + " deleted!")
+        if DEBUG:
+            print(self.name + " deleted!")
 
 
 class Container:
@@ -132,24 +47,70 @@ class Container:
     This class is not meant for "stand-alone" objects; rather, it is expected that other classes will inherit from the Container class in order to be able to contain Things."""
 
     # TODO is there any point in having this instead of just using a list?
-    def __init__(self):
+    def __init__(self) -> None:
         self.things: List['Thing'] = []
 
-    def have_thing(self, x: 'Thing'):
+    def have_thing(self, x: 'Thing') -> bool:
         if x in self.things:
             return True
         else:
             return False
 
-    def add_thing(self, x: 'Thing'):
+    def add_thing(self, x: 'Thing') -> None:
         # TODO should these also world.tell_world()?
         if not self.have_thing(x):
             self.things.append(x)
 
-    def delete_thing(self, x: 'Thing'):
+    def remove_thing(self, x: 'Thing') -> None:
         # TODO should these also world.tell_world()?
         if self.have_thing(x):
             self.things.remove(x)
+
+
+class Clock(Named_Object):
+    """A Clock is an object with a notion of time, which it imparts to all objects that have asked for it. It does this by invoking a list of callbacks whenever the tick() method is invoked."""
+
+    def __init__(self) -> None:
+        self.time: int = 0
+        self.callbacks: List[Callable] = []
+        self.removed_callbacks: List[Callable] = []
+        super(Clock, self).__init__('Clock')
+
+    def __repr__(self):
+        return self.name
+
+    def install(self) -> None:
+        self.add_callback(self.print_tick)
+
+    def reset(self) -> None:
+        self.time = 0
+        self.callbacks = []
+
+    def tick(self) -> None:
+        for cb in reversed(self.callbacks):
+            if cb not in self.removed_callbacks:
+                cb()
+        self.removed_callbacks = []  # TODO does this do things correctly??
+        self.time += 1
+
+    def print_tick(self) -> None:
+        print("---" + self.name + " Tick " + str(self.time) + "---")
+
+    def add_callback(self, cb: Callable):
+        if cb in self.callbacks:
+            print(str(cb.__func__) + " already exists")
+        else:
+            self.callbacks.append(cb)
+            if DEBUG:
+                x = str(cb).split()
+                print(x[-1].replace('>', '.') + x[2] + " added")
+
+    def remove_callback(self, cb: Callable):
+        if cb in self.callbacks:
+            self.removed_callbacks.append(cb)
+            self.callbacks.remove(cb)
+            if DEBUG:
+                print(str(cb.__func__) + " removed")
 
 
 class Thing(Named_Object):
@@ -159,18 +120,18 @@ class Thing(Named_Object):
         self.location = location
         super(Thing, self).__init__(name)
 
-    def install(self):
+    def install(self) -> None:
         super(Thing, self).install()
         self.location.add_thing(self)
 
-    def delete(self):
-        self.location.delete_thing(self)
+    def delete(self) -> None:
+        self.location.remove_thing(self)
         super(Thing, self).delete()
 
-    def emit(self, text: str):
-        # TODO should this be renamed say, in parallel to Person.say()?
+    def say(self, text: str):
         # TODO tell_room()
-        print(self.location, "At " + self.location.name + " " + text)
+        if DEBUG:
+            print("At " + self.location.name + " " + text)
 
 
 class Mobile_Thing(Thing):
@@ -181,20 +142,16 @@ class Mobile_Thing(Thing):
     def __init__(self, name: str, location: 'Place'):
         self.creation_site = location
         super(Mobile_Thing, self).__init__(name, location)
-        # self.location: Union[Person, Place]
+        self.location: Union['Person', 'Place']
 
     def change_location(self, new_location: Union['Person', 'Place']):
-        self.location.delete_thing(self)
+        owner = self.location
+        owner.remove_thing(self)
+        if isinstance(owner, Person):
+            owner.say("I lose " + self.name)
+            owner.have_fit()
         new_location.add_thing(self)
         self.location = new_location
-
-    def enter_room(self):
-        # TODO are these methods necessary? cf. Person.enter_room()
-        return True
-
-    def leave_room(self):
-        # TODO are these methods necessary? cf. Person.leave_room()
-        return True
 
 
 class Place(Container, Named_Object):
@@ -213,9 +170,13 @@ class Place(Container, Named_Object):
     def add_exit(self, exit: 'Exit'):
         if exit not in self.exits:
             self.exits.append(exit)
-            print(exit.name + " added at " + self.name)
+            if DEBUG:
+                print(exit.name + " added at " + self.name)
+            return True
         else:
-            print(self.name + " already has exit to " + exit.name)
+            if DEBUG:
+                print(self.name + " already has an exit to " + exit.name)
+            return False
 
 
 class Exit(Named_Object):
@@ -227,6 +188,7 @@ class Exit(Named_Object):
         self.destination = destination
         super(Exit, self).__init__(direction)
 
+    # TODO is this hasattr really necessary
     def install(self):
         if hasattr(self, "origin"):
             if self.origin.add_exit(self):
@@ -234,11 +196,10 @@ class Exit(Named_Object):
 
     def use(self, who: 'Person'):
         # TODO Check that the Place stops having the Person when they use the Exit
-        who.leave_room()
         # TODO tell_room()
-        print(who.location, who.name + " moves from " + who.location.name + " to " + self.destination.name)
+        if DEBUG:
+            print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
         who.change_location(self.destination)
-        who.enter_room()
 
 
 # There are several kinds of Person:
@@ -252,42 +213,44 @@ class Person(Container, Mobile_Thing):
         self.health: int = 3
         self.strength: int = 1
         Mobile_Thing.__init__(self, name, birthplace)
+        self.things: List[Mobile_Thing]
         super(Person, self).__init__()
-        # self.things: List[Mobile_Thing]
 
     def say(self, text: str):
         # TODO tell_room()
-        print(self.location, "At " + self.location.name + " " + self.name + " says: " + text)
+        if DEBUG:
+            print("At " + self.location.name + " " + self.name + " says: " + text)
 
-    def have_fit(self):
+    def have_fit(self) -> None:
         self.say("Yaaaah! I am upset!")
         self.say("I feel better now.")
 
-    def people_around(self):
+    # TODO combine _around methods?
+    def people_around(self) -> List['Person']:
         people: List[Person] = []
-        for each in self.location.things:
-            if each != self and isinstance(each, Person):
-                people.append(each)
+        for t in self.location.things:
+            if t != self and isinstance(t, Person):
+                people.append(t)
         return people
 
-    def things_around(self):
+    def room_things(self) -> List[Thing]:
         things: List[Thing] = []
-        for each in self.location.things:
-            if not isinstance(each, Person):
-                things.append(each)
+        for t in self.location.things:
+            if not isinstance(t, Person):
+                things.append(t)
         return things
 
-    def peek_around(self):
-        all_items: List[List[str]] = []
-        for each in self.people_around():
-            itemlist: List[str] = names(each.things)
+    def people_things(self) -> List[List[Thing]]:
+        all_items: List[List[Thing]] = []
+        for p in self.people_around():
+            itemlist: List[str] = p.things
             if len(itemlist) > 0:
-                self.say(each.name + " has " + ", ".join(itemlist))
+                self.say(p.name + " has " + ", ".join(names(itemlist)))
             all_items.append(itemlist)
         # TODO tell_room()
         return all_items
 
-    def take(self, itemname: str):
+    def take(self, itemname: str) -> bool:
         item = thingfind(itemname, self.location.things)
         if not item:
             self.say("Sorry, that item isn't here.")
@@ -301,65 +264,53 @@ class Person(Container, Mobile_Thing):
         else:
             owner = item.location
             self.say("I take " + item.name + " from " + owner.name)
-            if isinstance(owner, Person):
-                owner.lose(item, self)
-            else:
-                item.change_location(self)
+            item.change_location(self)
             return True
 
-    def lose(self, item: Mobile_Thing, destination):
-        self.say("I lose " + item.name)
-        self.have_fit()
-        item.change_location(destination)
-
-    def drop(self, itemname: str):
-        # TODO clarify that self.things only ever contains Mobile_Things
-        item = thingfind(itemname, self.things)
-        if not item:
-            self.say("I don't have that item!")
-            return False
-        else:
+    def drop(self, itemname: str) -> bool:
+        item: Optional[Mobile_Thing] = thingfind(itemname, self.things)
+        if item:
             self.say("I drop " + item.name + " at " + self.location.name)
             item.change_location(self.location)
             return True
 
-    def go_exit(self, exit: Exit):
-        exit.use(self)
+        else:
+            self.say("I don't have that item!")
+            return False
 
-    def go(self, direction: str):
+    def go(self, direction: str) -> bool:
         exit = self.location.exit_towards(direction)
-        if isinstance(exit, Exit):
-            self.go_exit(exit)
+        if exit:
+            exit.use(self)
             return True
         else:
             # TODO tell_room()
             print(self.location, "No exit in " + direction + " direction")
             return False
 
-    def suffer(self, hits: int, perp):
-        self.say("Ouch! " + str(hits) + " hits is more than I want!")
+    def wander(self) -> None:
+        exit: Exit = random_exit(self.location)
+        exit.use(self)
+
+    def suffer(self, hits: int, perp: 'Person'):
+        self.say("Ouch! " + str(hits) + " damage is more than I want!")
         self.health -= hits
         if self.health <= 0:
             self.die(perp)
         print('Health: ' + str(self.health))
 
-    def die(self, perp):
-        for each in self.things:
-            self.lose(each, self.location)
+    def die(self, perp: 'Person'):
+        for n in names(self.things):
+            self.drop(n)
         print("An earth-shattering, soul-piercing scream is heard...")
-        self.create_body(perp)
+        Body(self.name, self.location, perp).install()
         self.delete()
 
-    def create_body(self, perp):
-        # TODO combine die() with create_body()?
-        Body(self.name, self.location, perp).install()
-
-    def enter_room(self):
-        # TODO write leave_room? get rid of enter_room? cf. Exit.use()
+    def change_location(self, new_location: Union['Person', 'Place']):
+        super(Person, self).change_location(new_location)
         others = self.people_around()
         if len(others) > 0:
             self.say("Hi " + ", ".join(names(others)))
-        return True
 
 
 class Autonomous_Person(Person):
@@ -373,62 +324,61 @@ class Autonomous_Person(Person):
         self.miserly = miserly
         super(Autonomous_Person, self).__init__(name, birthplace)
 
-    def install(self):
-        # global clock
+    def install(self) -> None:
         super(Autonomous_Person, self).install()
-        clock.add_callback(Callback("move-and-take", self, "move_and_take"))
+        clock.add_callback(self.move_and_take)
 
-    def move_and_take(self):
+    def move_and_take(self) -> None:
         moves: int = random.randint(0, self.activity)
         while moves > 0:
-            self.move()
+            self.wander()
             moves -= 1
         if random.randint(0, self.miserly) == 0:
             self.take()
-        self.say(self.name + " done moving for this tick")
+        if DEBUG:
+            self.say("I'm done moving for now.")
 
-    def die(self, perp):
-        # global clock
-        clock.remove_callback(self, "move-and-take")
-        self.say("SHREEEEK! I, uh, suddenly feel very faint...")
+    def die(self, perp: Person) -> None:
+        clock.remove_callback(self.move_and_take)
+        if DEBUG:
+            self.say("Aaaaahhhh! I suddenly feel very faint...")
         super(Autonomous_Person, self).die(perp)
 
-    def move(self):
-        exit: Exit = random_exit(self.location)
-        self.go_exit(exit)
-
-    def take(self):
-        items: List[Named_Object] = self.things_around() + self.peek_around()
+    def take(self) -> bool:
+        items: List[Named_Object] = self.room_things() + self.people_things()
         if len(items) > 0:
             super(Autonomous_Person, self).take(random.choice(items))
-        return True
+            return True
+        else:
+            if DEBUG:
+                self.say("Whoops, there's nothing here to take.")
+            return False
 
 
 class Body(Thing):
     """A Thing which has the potential to rise as a Vampire"""
 
-    def __init__(self, name: str, location: Place, perp):
+    def __init__(self, name: str, location: Place, perp: Person):
         self.age: int = 0
         self.perp = perp
         super(Body, self).__init__(name, location)
         self.name = "body of " + name
 
-    def install(self):
-        # global clock
+    def install(self) -> None:
         super(Body, self).install()
         if isinstance(self.perp, Vampire):
-            clock.add_callback(Callback(str(self.name), self, "wait"))
+            clock.add_callback(self.wait)
 
-    def wait(self):
+    def wait(self) -> None:
         self.age += 1
         if self.age > 3:
             self.delete()
-            self.emit(self.name + " rises as a vampire!")
+            if DEBUG:
+                self.say(self.name + " rises as a vampire!")
             Vampire(self.name, self.location, self.perp).install()
 
-    def delete(self):
-        # global clock
-        clock.remove_callback(self, str(self.name))
+    def delete(self) -> None:
+        clock.remove_callback(self.wait)
         super(Body, self).delete()
 
 
@@ -443,42 +393,39 @@ class Vampire(Person):
             self.power = 10
         super(Vampire, self).__init__(name, birthplace)
 
-    def install(self):
-        # global clock
+    def install(self) -> None:
         super(Vampire, self).install()
         if self.sire:
             self.sire.gain_power()
-        clock.add_callback(Callback("rove-and-attack", self, "rove_and_attack"))
+        clock.add_callback(self.rove_and_attack)
 
-    def die(self, perp):
-        # global clock
-        clock.remove_callback(self, "rove-and-attack")
+    def die(self, perp: Person):
+        clock.remove_callback(self.rove_and_attack)
         super(Vampire, self).die(perp)
 
-    def create_body(self, perp):
-        self.emit(self.name + " turns to dust!")
+    def create_body(self, perp: Person):
+        if DEBUG:
+            self.say(self.name + " turns to dust!")
 
-    def gain_power(self):
+    def gain_power(self) -> None:
         self.power += 1
-        print(self.name + " gained power")
+        if DEBUG:
+            self.say(self.name + " gained power")
 
-    def rove_and_attack(self):
+    def rove_and_attack(self) -> None:
         if random.randint(0, 2) == 0:
-            self.move()
+            self.wander()
         if random.randint(0, 3) < 2:
             self.attack()
 
-    def move(self):
-        exit: Exit = random_exit(self.location)
-        self.go_exit(exit)
-
-    def attack(self):
+    def attack(self) -> None:
         others = self.people_around()
         if len(others) > 0:
             victim = random.choice(others)
-            self.emit(self.name + " bites " + victim.name + "!")
             victim.suffer(random.randint(0, self.power), self)
-        print(self.name + " is tired")
+            if DEBUG:
+                self.say(self.name + " bites " + victim.name + "!")
+                print(self.name + " is tired")
 
 
 class Avatar(Person):
@@ -487,16 +434,16 @@ class Avatar(Person):
     def __init__(self, name: str, birthplace: Place):
         super(Avatar, self).__init__(name, birthplace)
 
-    def look(self):
+    def look(self) -> None:
         print("You are in " + self.location.name)
         if len(self.things) > 0:
             print("You are holding: " + ", ".join(names(self.things)))
         else:
             print("You are not holding anything.")
-        if len(self.things_around()) > 0:
-            print("You see stuff in the room: " + ", ".join(names(self.things_around())))
+        if len(self.room_things()) > 0:
+            print("You see things in the room: " + ", ".join(names(self.room_things())))
         else:
-            print("There is no stuff in the room.")
+            print("There is nothing in the room.")
         if len(self.people_around()) > 0:
             print("You see other people: " + ", ".join(names(self.people_around())))
         else:
@@ -506,16 +453,16 @@ class Avatar(Person):
         else:
             print("There are no exits... you are dead and gone to heaven!")
 
-    def go(self, direction: str):
+    def go(self, direction: str) -> bool:
         success: bool = super(Avatar, self).go(direction)
         if success:
-            # global clock
             clock.tick()
+            self.look()
         return success
 
-    def die(self, perp):
+    def die(self, perp: Person):
         self.say("I am slain!")
         super(Avatar, self).die(perp)
 
 
-clock = Clock()
+clock: Clock = Clock()
