@@ -56,11 +56,13 @@ class Container:
         else:
             return False
 
+    # TODO consider raising exceptions here?
     def add_thing(self, x: 'Thing') -> None:
         # TODO should these also world.tell_world()?
         if not self.have_thing(x):
             self.things.append(x)
 
+    # TODO consider raising exceptions here?
     def remove_thing(self, x: 'Thing') -> None:
         # TODO should these also world.tell_world()?
         if self.have_thing(x):
@@ -97,12 +99,12 @@ class Clock(Named_Object):
         print("---" + self.name + " Tick " + str(self.time) + "---")
 
     def add_callback(self, cb: Callable):
+        x = str(cb).split()
         if cb in self.callbacks:
-            print(str(cb.__func__) + " already exists")
+            print(x[-1].replace('>', '.') + x[2] + " already exists")
         else:
             self.callbacks.append(cb)
             if DEBUG:
-                x = str(cb).split()
                 print(x[-1].replace('>', '.') + x[2] + " added")
 
     def remove_callback(self, cb: Callable):
@@ -110,7 +112,8 @@ class Clock(Named_Object):
             self.removed_callbacks.append(cb)
             self.callbacks.remove(cb)
             if DEBUG:
-                print(str(cb.__func__) + " removed")
+                x = str(cb).split()
+                print(x[-1].replace('>', '.') + x[2] + " removed")
 
 
 class Thing(Named_Object):
@@ -131,7 +134,7 @@ class Thing(Named_Object):
     def say(self, text: str):
         # TODO tell_room()
         if DEBUG:
-            print("At " + self.location.name + " " + text)
+            print("At " + self.location.name + ", " + text)
 
 
 class Mobile_Thing(Thing):
@@ -152,6 +155,31 @@ class Mobile_Thing(Thing):
             owner.have_fit()
         new_location.add_thing(self)
         self.location = new_location
+
+
+class Holy_Object(Mobile_Thing):
+    """A Holy_Object is a Mobile_Thing that repels Vampire attacks on the Person holding it."""
+
+    def __init__(self, name: str, location: 'Place'):
+        super(Holy_Object, self).__init__(name, location)
+
+
+class Weapon(Mobile_Thing):
+    """A Weapon is a Mobile_Thing that can be used to attack Vampires (and other Persons). Usually it deals a random amount of damage (up to its damage value) but 10% of the time it inflicts 10x normal."""
+
+    def __init__(self, name: str, location: 'Place', damage: int):
+        self.damage = damage
+        super(Weapon, self).__init__(name, location)
+
+    def hit(self, perp: 'Person', target):
+        self.say(perp.name + " lays the smackdown on " + target.name + '!')
+        normal = random.randint(1, self.damage)
+        chance = random.randint(1, 10)
+
+        if chance == 1:
+            target.suffer(10 * normal, perp)
+        else:
+            target.suffer(normal, perp)
 
 
 class Place(Container, Named_Object):
@@ -189,6 +217,7 @@ class Exit(Named_Object):
         super(Exit, self).__init__(direction)
 
     # TODO is this hasattr really necessary
+    # TODO check if there's already an exit to that destination??
     def install(self):
         if hasattr(self, "origin"):
             if self.origin.add_exit(self):
@@ -240,18 +269,18 @@ class Person(Container, Mobile_Thing):
                 things.append(t)
         return things
 
-    def people_things(self) -> List[List[Thing]]:
-        all_items: List[List[Thing]] = []
+    def people_things(self) -> List[Mobile_Thing]:
+        all_items: List[Mobile_Thing] = []
         for p in self.people_around():
-            itemlist: List[str] = p.things
+            itemlist: List[Mobile_Thing] = p.things
             if len(itemlist) > 0:
                 self.say(p.name + " has " + ", ".join(names(itemlist)))
-            all_items.append(itemlist)
+            all_items.extend(itemlist)
         # TODO tell_room()
         return all_items
 
     def take(self, itemname: str) -> bool:
-        item = thingfind(itemname, self.location.things)
+        item: Optional[Mobile_Thing] = thingfind(itemname, self.location.things)
         if not item:
             self.say("Sorry, that item isn't here.")
             return False
@@ -299,6 +328,22 @@ class Person(Container, Mobile_Thing):
             self.die(perp)
         print('Health: ' + str(self.health))
 
+    def attack(self, target: str):
+        victim = thingfind(target, self.people_around())
+
+        # pick a weapon: from player input, or the strongest item in inventory, or fists if you have no weapons
+        weapons = [x for x in self.things if isinstance(x, Weapon)]
+        if len(weapons) > 0:
+            print("Choose your weapon: " + ', '.join(names(weapons)))
+            w = thingfind(input(), weapons)
+            if not w:
+                w = max(weapons, key=lambda x: x.damage)
+
+            w.hit(self, victim)
+        else:
+            self.say(self.name + " punches " + target + "!")
+            victim.suffer(3, self)
+
     def die(self, perp: 'Person'):
         for n in names(self.things):
             self.drop(n)
@@ -345,41 +390,14 @@ class Autonomous_Person(Person):
         super(Autonomous_Person, self).die(perp)
 
     def take(self) -> bool:
-        items: List[Named_Object] = self.room_things() + self.people_things()
-        if len(items) > 0:
-            super(Autonomous_Person, self).take(random.choice(items))
+        items: List[Named_Object] = self.people_things() + self.room_things()
+        if items:
+            super(Autonomous_Person, self).take(random.choice(items).name)
             return True
         else:
             if DEBUG:
                 self.say("Whoops, there's nothing here to take.")
             return False
-
-
-class Body(Thing):
-    """A Thing which has the potential to rise as a Vampire"""
-
-    def __init__(self, name: str, location: Place, perp: Person):
-        self.age: int = 0
-        self.perp = perp
-        super(Body, self).__init__(name, location)
-        self.name = "body of " + name
-
-    def install(self) -> None:
-        super(Body, self).install()
-        if isinstance(self.perp, Vampire):
-            clock.add_callback(self.wait)
-
-    def wait(self) -> None:
-        self.age += 1
-        if self.age > 3:
-            self.delete()
-            if DEBUG:
-                self.say(self.name + " rises as a vampire!")
-            Vampire(self.name, self.location, self.perp).install()
-
-    def delete(self) -> None:
-        clock.remove_callback(self.wait)
-        super(Body, self).delete()
 
 
 class Vampire(Person):
@@ -422,10 +440,44 @@ class Vampire(Person):
         others = self.people_around()
         if len(others) > 0:
             victim = random.choice(others)
-            victim.suffer(random.randint(0, self.power), self)
+            self.say(self.name + " bites " + victim.name + "!")
+            for t in victim.things:
+                if isinstance(t, Holy_Object):
+                    if DEBUG:
+                        self.say('Curses! Foiled again!')
+                    break
+            else:
+                victim.suffer(random.randint(0, self.power), self)
+                if DEBUG:
+                    print(self.name + " is tired")
+
+
+class Body(Thing):
+    """A Thing which has the potential to rise as a Vampire"""
+
+    def __init__(self, name: str, location: Place, perp: Vampire):
+        self.age: int = 0
+        self.perp = perp
+        super(Body, self).__init__(name, location)
+        self.name = "body of " + name
+
+    def install(self) -> None:
+        super(Body, self).install()
+        if isinstance(self.perp, Vampire):
+            clock.add_callback(self.wait)
+
+    def wait(self) -> None:
+        self.age += 1
+        if self.age > 3:
+            self.delete()
+            name = self.name.strip("body of")
             if DEBUG:
-                self.say(self.name + " bites " + victim.name + "!")
-                print(self.name + " is tired")
+                self.say(name + " rises as a vampire!")
+            Vampire(name, self.location, self.perp).install()
+
+    def delete(self) -> None:
+        clock.remove_callback(self.wait)
+        super(Body, self).delete()
 
 
 class Avatar(Person):
@@ -461,7 +513,7 @@ class Avatar(Person):
         return success
 
     def die(self, perp: Person):
-        self.say("I am slain!")
+        self.say("Woe, I am slain!")
         super(Avatar, self).die(perp)
 
 

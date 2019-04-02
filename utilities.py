@@ -53,12 +53,10 @@ def random_exit(place: 'Place') -> 'Exit':
 
 
 def current_time():
-    global clock
     return clock.time
 
 
 def run_clock(x):
-    global clock
     while x > 0:
         clock.tick()
         x -= 1
