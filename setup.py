@@ -1,6 +1,7 @@
 import random
 
 import data
+import utilities as u
 from objects import *
 
 
@@ -9,42 +10,41 @@ def create_world():
     w: Dict[str, Place] = {}
     for p in data.places:
         w[p] = Place(p)
-        w[p].install()
 
     return w
 
 
 def create_things(world):
     for t in data.things:
-        Thing(t['name'], world[t['place']]).install()
+        Thing(t['name'], world[t['place']])
 
     for m in data.mobile_things:
-        Mobile_Thing(m['name'], world[m['place']]).install()
+        Mobile_Thing(m['name'], world[m['place']])
 
     for h in data.holy_objects:
-        Holy_Object(h, random.choice(list(world.values()))).install()
+        Holy_Object(h, random.choice(list(world.values())))
 
 
 def create_exits(world):
     # TODO modify Exit to be more parallel to Weapon and Thing??
     """Install an Exit between two Places."""
     for e in data.exits:
-        Exit(world[e['origin']], e['direction1'], world[e['destination']]).install()
-        Exit(world[e['destination']], e['direction2'], world[e['origin']]).install()
+        Exit(world[e['origin']], e['direction1'], world[e['destination']])
+        Exit(world[e['destination']], e['direction2'], world[e['origin']])
 
 
 def create_weapons(world):
     for w in data.weapons:
-        Weapon(w['name'], random.choice(list(world.values())), w['damage']).install()
+        Weapon(w['name'], random.choice(list(world.values())), w['damage'])
 
 
 def create_people(world):
     names = data.names
     vamp = random.choice(names)
     names.remove(vamp)
-    Vampire(vamp, random.choice(list(world.values())), False).install()
+    Vampire(vamp, random.choice(list(world.values())), False)
     for n in names:
-        Autonomous_Person(n, random.choice(list(world.values())), random.randint(0, 3), random.randint(0, 3)).install()
+        Autonomous_Person(n, random.choice(list(world.values())), random.randint(0, 3), random.randint(0, 3))
 
 
 def setup():
@@ -60,7 +60,6 @@ def setup():
     print('The Adventures of Buffer the Vampire Slayer')
     name = input('player name: ')
     player = Avatar(name, random.choice(list(world.values())))
-    player.install()
     player.look()
 
     return world, player
@@ -79,7 +78,7 @@ while True:
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
     if action in ['i', 'inventory']:
-        print('Inventory: ' + ', '.join(names(player.things)))
+        print('Inventory: ' + ', '.join(u.names(player.things)))
     if action in ['?', 'h', 'help']:
         print(dir(player))
     if ' ' in action:
@@ -87,9 +86,9 @@ while True:
         if hasattr(player, verb):
             getattr(player, verb)(object)
         if verb == 'tick':
-            run_clock(int(object))
+            u.run_clock(int(object))
         if verb == 'inspect':
-            o = thingfind(object, everything)
+            o = u.thingfind(object, everything)
             print(vars(o))
     if hasattr(player, action):
         getattr(player, action)()

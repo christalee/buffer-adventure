@@ -59,18 +59,15 @@ def test_object_init(named_object):
     no = named_object("test object")
 
     assert no.name == "test object"
-    assert not no.isInstalled
-
-    no.install()
-    assert no.isInstalled
+    assert no.installed
 
 
 def test_object_delete(named_object):
     no = named_object("test object")
 
-    no.install()
+    assert no.installed
     no.delete()
-    assert not no.isInstalled
+    assert not no.installed
 
 
 # Container
@@ -88,6 +85,7 @@ def test_container_have_thing(container, thing, place):
 
     assert not container.have_thing(cat)
 
+    # TODO should this use container.add_thing instead of setting it directly?
     container.things = [cat, rug, blanket]
     assert container.have_thing(rug)
     assert not container.have_thing(box)
@@ -135,22 +133,13 @@ def test_container_delete_thing(container, thing, place):
 # Clock
 def test_clock_init(clock):
     assert clock.time == 0
-    assert clock.callbacks == []
     assert clock.removed_callbacks == []
     assert clock.name == 'Clock'
-
-
-def test_clock_install(clock):
-    assert clock.callbacks == []
-    clock.install()
     assert clock.callbacks == [clock.print_tick]
 
 
 def test_clock_reset(clock):
     clock.time = 5
-    clock.install()
-    assert clock.callbacks == [clock.print_tick]
-
     clock.reset()
     assert clock.time == 0
     assert clock.callbacks == []
@@ -170,13 +159,6 @@ def test_thing_init(place, thing):
     cat = thing("cat", bed)
 
     assert cat.location == bed
-
-
-def test_thing_install(place, thing):
-    bed = place("bed")
-    cat = thing("cat", bed)
-
-    cat.install()
     assert bed.have_thing(cat)
 
 
@@ -184,7 +166,7 @@ def test_thing_delete(place, thing):
     bed = place("bed")
     cat = thing("cat", bed)
 
-    cat.install()
+    assert bed.have_thing(cat)
     cat.delete()
     assert not bed.have_thing(cat)
 
@@ -205,7 +187,6 @@ def test_mthing_change_location(place, mthing):
     bed = place("bed")
     dog = mthing("dog", floor)
 
-    dog.install()
     assert dog.location == floor
     assert floor.have_thing(dog)
 
@@ -221,7 +202,6 @@ def test_holy_init(holy, place):
     table = place("table")
     grail = holy('grail', table)
 
-    grail.install()
     assert grail.name == 'grail'
     assert grail.location == table
     assert table.have_thing(grail)
@@ -246,7 +226,6 @@ def test_place_exit_towards(place, exit):
     floor = place("floor")
     exit1 = exit(bed, "down", floor)
 
-    bed.add_exit(exit1)
     assert bed.exit_towards("down") == exit1
 
 
@@ -255,8 +234,7 @@ def test_place_add_exit(place, exit):
     floor = place("floor")
     exit1 = exit(bed, "down", floor)
 
-    assert bed.exits == []
-    assert bed.add_exit(exit1)
+    # TODO is this needed, since exit1 calls bed.add_exit?
     assert bed.exits == [exit1]
     # TODO find some way to test the else case
     assert not bed.add_exit(exit1)
@@ -271,15 +249,6 @@ def test_exit_init(place, exit):
     assert exit1.origin == bed
     assert exit1.direction == 'down'
     assert exit1.destination == floor
-
-
-def test_exit_install(place, exit):
-    bed = place("bed")
-    floor = place("floor")
-    exit1 = exit(bed, "down", floor)
-
-    # TODO is this redundant with test_place_add_exit?
-    exit1.install()
     assert bed.exits == [exit1]
 
 
@@ -289,8 +258,6 @@ def test_exit_use(place, exit, person):
     exit1 = exit(bed, "down", floor)
     alice = person("Alice", bed)
 
-    exit1.install()
-    alice.install()
     # TODO is this redundant with test_person_install?
     assert alice.location == bed
     assert bed.have_thing(alice)
@@ -330,8 +297,6 @@ def test_person_people_around(person, place, exit):
     bob = person("Bob", floor)
     exit1 = exit(bed, "down", floor)
 
-    alice.install()
-    bob.install()
     assert alice.people_around() == []
     assert bob.people_around() == []
 
@@ -346,8 +311,6 @@ def test_person_room_things(person, place, thing):
     blanket = thing("blanket", bed)
     alice = person("Alice", bed)
 
-    cat.install()
-    blanket.install()
     assert alice.room_things() == [cat, blanket]
 
 
@@ -357,7 +320,6 @@ def test_person_people_things(person, place, mthing):
     bob = person("Bob", floor)
     dog = mthing("dog", floor)
 
-    dog.install()
     dave.take(dog.name)
     assert bob.people_things() == [dog]
     assert dave.people_things() == []
@@ -374,7 +336,6 @@ def test_person_take(person, place, thing, mthing):
 
     assert dave.things == []
 
-    dog.install()
     dave.take(dog.name)
     assert dave.things == [dog]
     assert dog.location == dave
@@ -399,9 +360,6 @@ def test_names(place, thing, person):
     cat = thing("cat", bed)
     bob = person("Bob", floor)
 
-    blanket.install()
-    cat.install()
-    bob.install()
     objects = [bed, blanket, cat, bob]
     assert u.names(objects) == ['bed', "blanket", "cat", "Bob"]
 
@@ -413,9 +371,6 @@ def test_thingfind(place, thing, person):
     cat = thing("cat", bed)
     bob = person("Bob", floor)
 
-    blanket.install()
-    cat.install()
-    bob.install()
     objects = [bed, blanket, cat, bob]
     assert u.thingfind("cat", objects) == cat
     assert not u.thingfind("rug", objects)
@@ -427,9 +382,6 @@ def test_find_all(place, thing, person, mthing):
     cat = thing("cat", bed)
     pillow = mthing("pillow", bed)
 
-    blanket.install()
-    cat.install()
-    pillow.install()
     assert bed.things == [blanket, cat, pillow]
     assert u.find_all(bed, o.Mobile_Thing) == [pillow]
 
@@ -441,8 +393,6 @@ def test_find_exit(exit, place):
     exit1 = exit(bed, "down", floor)
     exit2 = exit(bed, "left", table)
 
-    exit1.install()
-    exit2.install()
     assert bed.exits == [exit1, exit2]
     assert u.find_exit(bed.exits, "left") == exit2
     # find a way to test the else clauses here
@@ -455,6 +405,6 @@ def test_random_exit(exit, place):
     exit1 = exit(bed, "down", floor)
     exit2 = exit(bed, "left", table)
 
-    exit1.install()
-    exit2.install()
+    # TODO are these redundant or prudent?
     assert u.random_exit(bed) in bed.exits
+    assert u.random_exit(bed) in [exit1, exit2]

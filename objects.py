@@ -7,9 +7,9 @@
 # TODO skipping network-mode, whatever that is
 
 import random
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, List, Optional, Union
 
-from utilities import *
+import utilities as u
 
 DEBUG: bool = True
 
@@ -24,19 +24,16 @@ class Named_Object:
 
     def __init__(self, name) -> None:
         self.name: str = name
-        self.isInstalled: bool = False
+        self.installed: bool = True
+        if DEBUG:
+            print(self.name + " installed!")
 
     def __repr__(self):
         return self.name
 
-    def install(self) -> None:
-        self.isInstalled = True
-        if DEBUG:
-            print(self.name + " installed!")
-
     def delete(self) -> None:
         # TODO should this actually delete the object?
-        self.isInstalled = False
+        self.installed = False
         if DEBUG:
             print(self.name + " deleted!")
 
@@ -76,13 +73,12 @@ class Clock(Named_Object):
         self.time: int = 0
         self.callbacks: List[Callable] = []
         self.removed_callbacks: List[Callable] = []
+
         super(Clock, self).__init__('Clock')
+        self.add_callback(self.print_tick)
 
     def __repr__(self):
         return self.name
-
-    def install(self) -> None:
-        self.add_callback(self.print_tick)
 
     def reset(self) -> None:
         self.time = 0
@@ -121,11 +117,9 @@ class Thing(Named_Object):
 
     def __init__(self, name: str, location: 'Place'):
         self.location = location
-        super(Thing, self).__init__(name)
 
-    def install(self) -> None:
-        super(Thing, self).install()
         self.location.add_thing(self)
+        super(Thing, self).__init__(name)
 
     def delete(self) -> None:
         self.location.remove_thing(self)
@@ -144,8 +138,9 @@ class Mobile_Thing(Thing):
 
     def __init__(self, name: str, location: 'Place'):
         self.creation_site = location
-        super(Mobile_Thing, self).__init__(name, location)
         self.location: Union['Person', 'Place']
+
+        super(Mobile_Thing, self).__init__(name, location)
 
     def change_location(self, new_location: Union['Person', 'Place']):
         owner = self.location
@@ -169,6 +164,7 @@ class Weapon(Mobile_Thing):
 
     def __init__(self, name: str, location: 'Place', damage: int):
         self.damage = damage
+
         super(Weapon, self).__init__(name, location)
 
     def hit(self, perp: 'Person', target):
@@ -189,11 +185,12 @@ class Place(Container, Named_Object):
 
     def __init__(self, name: str):
         self.exits: List[Exit] = []
+
         Named_Object.__init__(self, name)
         super(Place, self).__init__()
 
     def exit_towards(self, direction: str):
-        return find_exit(self.exits, direction)
+        return u.find_exit(self.exits, direction)
 
     def add_exit(self, exit: 'Exit'):
         if exit not in self.exits:
@@ -214,14 +211,9 @@ class Exit(Named_Object):
         self.origin = origin
         self.direction = direction
         self.destination = destination
-        super(Exit, self).__init__(direction)
 
-    # TODO is this hasattr really necessary
-    # TODO check if there's already an exit to that destination??
-    def install(self):
-        if hasattr(self, "origin"):
-            if self.origin.add_exit(self):
-                super(Exit, self).install()
+        super(Exit, self).__init__(direction)
+        self.origin.add_exit(self)
 
     def use(self, who: 'Person'):
         # TODO Check that the Place stops having the Person when they use the Exit
@@ -241,8 +233,9 @@ class Person(Container, Mobile_Thing):
     def __init__(self, name: str, birthplace: Place):
         self.health: int = 3
         self.strength: int = 1
-        Mobile_Thing.__init__(self, name, birthplace)
         self.things: List[Mobile_Thing]
+
+        Mobile_Thing.__init__(self, name, birthplace)
         super(Person, self).__init__()
 
     def say(self, text: str):
@@ -274,13 +267,13 @@ class Person(Container, Mobile_Thing):
         for p in self.people_around():
             itemlist: List[Mobile_Thing] = p.things
             if len(itemlist) > 0:
-                self.say(p.name + " has " + ", ".join(names(itemlist)))
+                self.say(p.name + " has " + ", ".join(u.names(itemlist)))
             all_items.extend(itemlist)
         # TODO tell_room()
         return all_items
 
     def take(self, itemname: str) -> bool:
-        item: Optional[Mobile_Thing] = thingfind(itemname, self.location.things)
+        item: Optional[Mobile_Thing] = u.thingfind(itemname, self.location.things)
         if not item:
             self.say("Sorry, that item isn't here.")
             return False
@@ -297,7 +290,7 @@ class Person(Container, Mobile_Thing):
             return True
 
     def drop(self, itemname: str) -> bool:
-        item: Optional[Mobile_Thing] = thingfind(itemname, self.things)
+        item: Optional[Mobile_Thing] = u.thingfind(itemname, self.things)
         if item:
             self.say("I drop " + item.name + " at " + self.location.name)
             item.change_location(self.location)
@@ -318,7 +311,7 @@ class Person(Container, Mobile_Thing):
             return False
 
     def wander(self) -> None:
-        exit: Exit = random_exit(self.location)
+        exit: Exit = u.random_exit(self.location)
         exit.use(self)
 
     def suffer(self, hits: int, perp: 'Person'):
@@ -329,13 +322,13 @@ class Person(Container, Mobile_Thing):
         print('Health: ' + str(self.health))
 
     def attack(self, target: str):
-        victim = thingfind(target, self.people_around())
+        victim = u.thingfind(target, self.people_around())
 
         # pick a weapon: from player input, or the strongest item in inventory, or fists if you have no weapons
         weapons = [x for x in self.things if isinstance(x, Weapon)]
         if len(weapons) > 0:
-            print("Choose your weapon: " + ', '.join(names(weapons)))
-            w = thingfind(input(), weapons)
+            print("Choose your weapon: " + ', '.join(u.names(weapons)))
+            w = u.thingfind(input(), weapons)
             if not w:
                 w = max(weapons, key=lambda x: x.damage)
 
@@ -345,17 +338,17 @@ class Person(Container, Mobile_Thing):
             victim.suffer(3, self)
 
     def die(self, perp: 'Person'):
-        for n in names(self.things):
+        for n in u.names(self.things):
             self.drop(n)
         print("An earth-shattering, soul-piercing scream is heard...")
-        Body(self.name, self.location, perp).install()
+        Body(self.name, self.location, perp)
         self.delete()
 
     def change_location(self, new_location: Union['Person', 'Place']):
         super(Person, self).change_location(new_location)
         others = self.people_around()
         if len(others) > 0:
-            self.say("Hi " + ", ".join(names(others)))
+            self.say("Hi " + ", ".join(u.names(others)))
 
 
 class Autonomous_Person(Person):
@@ -367,10 +360,8 @@ class Autonomous_Person(Person):
     def __init__(self, name: str, birthplace: Place, activity: int, miserly: int):
         self.activity = activity
         self.miserly = miserly
-        super(Autonomous_Person, self).__init__(name, birthplace)
 
-    def install(self) -> None:
-        super(Autonomous_Person, self).install()
+        super(Autonomous_Person, self).__init__(name, birthplace)
         clock.add_callback(self.move_and_take)
 
     def move_and_take(self) -> None:
@@ -407,14 +398,11 @@ class Vampire(Person):
         self.sire = sire
         if self.sire:
             self.power = 2
+            self.sire.gain_power()
         else:
             self.power = 10
-        super(Vampire, self).__init__(name, birthplace)
 
-    def install(self) -> None:
-        super(Vampire, self).install()
-        if self.sire:
-            self.sire.gain_power()
+        super(Vampire, self).__init__(name, birthplace)
         clock.add_callback(self.rove_and_attack)
 
     def die(self, perp: Person):
@@ -458,11 +446,9 @@ class Body(Thing):
     def __init__(self, name: str, location: Place, perp: Vampire):
         self.age: int = 0
         self.perp = perp
-        super(Body, self).__init__(name, location)
         self.name = "body of " + name
 
-    def install(self) -> None:
-        super(Body, self).install()
+        super(Body, self).__init__(name, location)
         if isinstance(self.perp, Vampire):
             clock.add_callback(self.wait)
 
@@ -473,7 +459,7 @@ class Body(Thing):
             name = self.name.strip("body of")
             if DEBUG:
                 self.say(name + " rises as a vampire!")
-            Vampire(name, self.location, self.perp).install()
+            Vampire(name, self.location, self.perp)
 
     def delete(self) -> None:
         clock.remove_callback(self.wait)
@@ -489,19 +475,19 @@ class Avatar(Person):
     def look(self) -> None:
         print("You are in " + self.location.name)
         if len(self.things) > 0:
-            print("You are holding: " + ", ".join(names(self.things)))
+            print("You are holding: " + ", ".join(u.names(self.things)))
         else:
             print("You are not holding anything.")
         if len(self.room_things()) > 0:
-            print("You see things in the room: " + ", ".join(names(self.room_things())))
+            print("You see things in the room: " + ", ".join(u.names(self.room_things())))
         else:
             print("There is nothing in the room.")
         if len(self.people_around()) > 0:
-            print("You see other people: " + ", ".join(names(self.people_around())))
+            print("You see other people: " + ", ".join(u.names(self.people_around())))
         else:
             print("There are no other people around you.")
         if len(self.location.exits) > 0:
-            print("The exits are in directions: " + ", ".join(names(self.location.exits)))
+            print("The exits are in directions: " + ", ".join(u.names(self.location.exits)))
         else:
             print("There are no exits... you are dead and gone to heaven!")
 
