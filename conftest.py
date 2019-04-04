@@ -46,6 +46,13 @@ def holy():
 
 
 @pytest.fixture
+def weapon():
+    def _weapon(name, place, damage):
+        return o.Weapon(name, place, damage)
+    return _weapon
+
+
+@pytest.fixture
 def place():
     def _place(name):
         return o.Place(name)
@@ -70,20 +77,29 @@ def person():
 
 
 @pytest.fixture
-def objects(place, thing, mthing, holy, person, exit):
-    no = named_object("test object")
-    bed = place("bed")
-    floor = place("floor")
-    table = place("table")
-    cat = thing("cat", bed)
-    rug = thing("rug", floor)
-    blanket = thing("blanket", bed)
-    box = thing("box", floor)
-    dog = mthing("dog", floor)
-    grail = holy('grail', table)
-    alice = person("Alice", bed)
-    bob = person("Bob", floor)
-    exit1 = exit(bed, "down", floor)
-    exit2 = exit(bed, "left", table)
+def autop():
+    def _autop(name, place, activity, miserly):
+        return o.Autonomous_Person(name, place, activity, miserly)
 
-    return no, bed, floor, table, cat, dog, rug, blanket, box, grail, alice, bob, exit1, exit2
+    return _autop
+
+
+@pytest.fixture
+def vampire():
+    def _vampire(name, place, sire):
+        return o.Vampire(name, place, sire)
+
+    return _vampire
+
+
+@pytest.fixture
+def body():
+    def _body(name, place, perp):
+        return o.Body(name, place, perp)
+
+    return _body
+
+
+# @pytest.fixture
+# def avatar(name, place):
+#     return o.Avatar(name, place)

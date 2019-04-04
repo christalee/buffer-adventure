@@ -51,14 +51,4 @@ def find_exit(exitlist: List['Exit'], dir: str) -> Union[bool, 'Exit']:
 def random_exit(place: 'Place') -> 'Exit':
     return random.choice(place.exits)
 
-
-def current_time():
-    return clock.time
-
-
-def run_clock(x):
-    while x > 0:
-        clock.tick()
-        x -= 1
-
 # TODO consider adding remove_duplicates here?

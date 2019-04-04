@@ -43,15 +43,11 @@ class Container:
 
     This class is not meant for "stand-alone" objects; rather, it is expected that other classes will inherit from the Container class in order to be able to contain Things."""
 
-    # TODO is there any point in having this instead of just using a list?
     def __init__(self) -> None:
         self.things: List['Thing'] = []
 
     def have_thing(self, x: 'Thing') -> bool:
-        if x in self.things:
-            return True
-        else:
-            return False
+        return x in self.things
 
     # TODO consider raising exceptions here?
     def add_thing(self, x: 'Thing') -> None:
@@ -83,6 +79,7 @@ class Clock(Named_Object):
     def reset(self) -> None:
         self.time = 0
         self.callbacks = []
+        self.add_callback(self.print_tick)
 
     def tick(self) -> None:
         for cb in reversed(self.callbacks):
@@ -118,8 +115,8 @@ class Thing(Named_Object):
     def __init__(self, name: str, location: 'Place'):
         self.location = location
 
-        self.location.add_thing(self)
         super(Thing, self).__init__(name)
+        self.location.add_thing(self)
 
     def delete(self) -> None:
         self.location.remove_thing(self)
@@ -167,7 +164,7 @@ class Weapon(Mobile_Thing):
 
         super(Weapon, self).__init__(name, location)
 
-    def hit(self, perp: 'Person', target):
+    def hit(self, perp: 'Person', target: 'Person'):
         self.say(perp.name + " lays the smackdown on " + target.name + '!')
         normal = random.randint(1, self.damage)
         chance = random.randint(1, 10)
@@ -240,8 +237,7 @@ class Person(Container, Mobile_Thing):
 
     def say(self, text: str):
         # TODO tell_room()
-        if DEBUG:
-            print("At " + self.location.name + " " + self.name + " says: " + text)
+        print("At " + self.location.name + " " + self.name + " says: " + text)
 
     def have_fit(self) -> None:
         self.say("Yaaaah! I am upset!")
@@ -249,17 +245,11 @@ class Person(Container, Mobile_Thing):
 
     # TODO combine _around methods?
     def people_around(self) -> List['Person']:
-        people: List[Person] = []
-        for t in self.location.things:
-            if t != self and isinstance(t, Person):
-                people.append(t)
+        people: List[Person] = [p for p in self.location.things if p != self and isinstance(p, Person)]
         return people
 
     def room_things(self) -> List[Thing]:
-        things: List[Thing] = []
-        for t in self.location.things:
-            if not isinstance(t, Person):
-                things.append(t)
+        things: List[Thing] = [t for t in self.location.things if not isinstance(t, Person)]
         return things
 
     def people_things(self) -> List[Mobile_Thing]:
@@ -319,19 +309,24 @@ class Person(Container, Mobile_Thing):
         self.health -= hits
         if self.health <= 0:
             self.die(perp)
-        print('Health: ' + str(self.health))
+        if DEBUG:
+            print('Health: ' + str(self.health))
 
     def attack(self, target: str):
-        victim = u.thingfind(target, self.people_around())
-
+        victim: Optional[Person] = u.thingfind(target, self.people_around())
+        if not victim:
+            self.say("There's no one here to attack!")
+            return False
         # pick a weapon: from player input, or the strongest item in inventory, or fists if you have no weapons
-        weapons = [x for x in self.things if isinstance(x, Weapon)]
+        weapons: List[Optional[Weapon]] = [x for x in self.things if isinstance(x, Weapon)]
         if len(weapons) > 0:
-            print("Choose your weapon: " + ', '.join(u.names(weapons)))
-            w = u.thingfind(input(), weapons)
-            if not w:
-                w = max(weapons, key=lambda x: x.damage)
-
+            if len(weapons) == 1:
+                w = weapons[0]
+            else:
+                print("Choose your weapon: " + ', '.join(u.names(weapons)))
+                w = u.thingfind(input(), weapons)
+                if not w:
+                    w = max(weapons, key=lambda x: x.damage)
             w.hit(self, victim)
         else:
             self.say(self.name + " punches " + target + "!")
@@ -344,7 +339,7 @@ class Person(Container, Mobile_Thing):
         Body(self.name, self.location, perp)
         self.delete()
 
-    def change_location(self, new_location: Union['Person', 'Place']):
+    def change_location(self, new_location: Place):
         super(Person, self).change_location(new_location)
         others = self.people_around()
         if len(others) > 0:
@@ -406,12 +401,10 @@ class Vampire(Person):
         clock.add_callback(self.rove_and_attack)
 
     def die(self, perp: Person):
-        clock.remove_callback(self.rove_and_attack)
-        super(Vampire, self).die(perp)
-
-    def create_body(self, perp: Person):
         if DEBUG:
             self.say(self.name + " turns to dust!")
+        clock.remove_callback(self.rove_and_attack)
+        super(Vampire, self).die(perp)
 
     def gain_power(self) -> None:
         self.power += 1
@@ -425,7 +418,7 @@ class Vampire(Person):
             self.attack()
 
     def attack(self) -> None:
-        others = self.people_around()
+        others = [p for p in self.people_around() if not isinstance(p, Vampire)]
         if len(others) > 0:
             victim = random.choice(others)
             self.say(self.name + " bites " + victim.name + "!")
@@ -443,12 +436,12 @@ class Vampire(Person):
 class Body(Thing):
     """A Thing which has the potential to rise as a Vampire"""
 
-    def __init__(self, name: str, location: Place, perp: Vampire):
+    def __init__(self, name: str, location: Place, perp: Union[Person, Vampire]):
         self.age: int = 0
         self.perp = perp
-        self.name = "body of " + name
 
         super(Body, self).__init__(name, location)
+        self.name = "body of " + name
         if isinstance(self.perp, Vampire):
             clock.add_callback(self.wait)
 
@@ -456,7 +449,7 @@ class Body(Thing):
         self.age += 1
         if self.age > 3:
             self.delete()
-            name = self.name.strip("body of")
+            name = self.name.strip("body of ")
             if DEBUG:
                 self.say(name + " rises as a vampire!")
             Vampire(name, self.location, self.perp)
@@ -503,4 +496,15 @@ class Avatar(Person):
         super(Avatar, self).die(perp)
 
 
+# avoiding circular imports
 clock: Clock = Clock()
+
+
+def current_time():
+    return clock.time
+
+
+def run_clock(x):
+    while x > 0:
+        clock.tick()
+        x -= 1

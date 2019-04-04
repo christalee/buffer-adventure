@@ -73,7 +73,7 @@ for p in world:
 
 while True:
     action = input('What would you like to do? ')
-    if action in ['q', 'quit', 'exit']:
+    if action in ['q', 'quit', 'exit'] or player.health <= 0:
         break
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
