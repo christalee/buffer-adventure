@@ -114,6 +114,7 @@ class Thing(Named_Object):
 
     def __init__(self, name: str, location: 'Place'):
         self.location = location
+        self.owner: Optional['Person'] = None
 
         super(Thing, self).__init__(name)
         self.location.add_thing(self)
@@ -133,7 +134,6 @@ class Mobile_Thing(Thing):
 
     def __init__(self, name: str, location: 'Place'):
         self.creation_site = location
-        self.owner: Optional['Person'] = None
 
         super(Mobile_Thing, self).__init__(name, location)
 
@@ -212,7 +212,7 @@ class Exit(Named_Object):
         self.direction = direction
         self.destination = destination
 
-        super(Exit, self).__init__(direction)
+        super(Exit, self).__init__(direction + " - " + destination.name)
         self.origin.add_exit(self)
 
     def use(self, who: 'Person'):

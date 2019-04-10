@@ -139,6 +139,7 @@ def test_thing_init(place, thing):
 
     assert cat.location == bed
     assert bed.have_thing(cat)
+    assert not cat.owner
 
 
 def test_thing_delete(place, thing):
@@ -159,7 +160,6 @@ def test_mthing_init(place, mthing):
     dog = mthing("dog", floor)
 
     assert dog.creation_site == floor
-    assert not dog.owner
 
 
 def test_mthing_change_location(place, mthing):
@@ -267,6 +267,7 @@ def test_exit_init(place, exit):
     assert exit1.direction == 'down'
     assert exit1.destination == floor
     assert bed.exits == [exit1]
+    assert exit1.name == 'down - floor'
 
 
 def test_exit_use(place, exit, person):

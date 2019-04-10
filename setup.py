@@ -76,6 +76,8 @@ while True:
         break
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
+    if action in 'nsewup':
+        player.go(data.directions[action])
     if action in ['i', 'inventory']:
         print('Inventory: ' + ', '.join(u.names(player.things)))
     if action in ['?', 'h', 'help']:
