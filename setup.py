@@ -42,7 +42,7 @@ def create_people(world):
     names = data.names
     vamp = random.choice(names)
     names.remove(vamp)
-    Vampire(vamp, random.choice(list(world.values())), False)
+    Vampire(vamp, random.choice(list(world.values())), None)
     for n in names:
         Autonomous_Person(n, random.choice(list(world.values())), random.randint(0, 3), random.randint(0, 3))
 
@@ -66,10 +66,9 @@ def setup():
 
 
 world, player = setup()
-
-everything = []
-for p in world:
-    everything.extend(world[p].things)
+everything: List[Thing] = list(world.values())
+for p in world.values():
+    everything.extend(p.things)
 
 while True:
     action = input('What would you like to do? ')
@@ -86,10 +85,11 @@ while True:
         if hasattr(player, verb):
             getattr(player, verb)(object)
         if verb == 'tick':
-            u.run_clock(int(object))
+            run_clock(int(object))
         if verb == 'inspect':
             o = u.thingfind(object, everything)
-            print(vars(o))
+            if o:
+                print(vars(o))
     if hasattr(player, action):
         getattr(player, action)()
     else:

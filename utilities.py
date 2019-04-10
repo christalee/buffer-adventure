@@ -1,16 +1,16 @@
 import random
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 if TYPE_CHECKING:
     from objects import *
 
 
-def names(objectlist: List['Named_Object']) -> List[str]:
+def names(objectlist: Sequence['Named_Object']) -> List[str]:
     """Given a list of objects, return a list of their names."""
     return [x.name for x in objectlist]
 
 
-def thingfind(name: str, thinglist: List['Thing']) -> Optional['Thing']:
+def thingfind(name: str, thinglist: Sequence['Thing']) -> Optional['Thing']:
     # renamed this from objectfind to be more specific
     # TODO should this check for duplicates?
     """Given a name and a list of Things, return the first Thing with that name."""

@@ -7,7 +7,7 @@
 # TODO skipping network-mode, whatever that is
 
 import random
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 import utilities as u
 
@@ -129,24 +129,27 @@ class Thing(Named_Object):
 
 
 class Mobile_Thing(Thing):
-    # TODO figure out how to handle locations of Mobile_Things
-    # Mobile_Place = TypeVar('Mobile_Place', Place, Person)
     """A Mobile_Thing is a Thing that has a location that can change."""
 
     def __init__(self, name: str, location: 'Place'):
         self.creation_site = location
-        self.location: Union['Person', 'Place']
+        self.owner: Optional['Person'] = None
 
         super(Mobile_Thing, self).__init__(name, location)
 
-    def change_location(self, new_location: Union['Person', 'Place']):
-        owner = self.location
-        owner.remove_thing(self)
-        if isinstance(owner, Person):
-            owner.say("I lose " + self.name)
-            owner.have_fit()
+    def change_location(self, new_location: 'Place'):
+        self.location.remove_thing(self)
         new_location.add_thing(self)
         self.location = new_location
+
+    def change_owner(self, new_owner: Optional['Person']):
+        if self.owner:
+            self.owner.remove_thing(self)
+            self.owner.say("I lose " + self.name)
+            self.owner.have_fit()
+        if new_owner:
+            new_owner.add_thing(self)
+        self.owner = new_owner
 
 
 class Holy_Object(Mobile_Thing):
@@ -218,6 +221,8 @@ class Exit(Named_Object):
         if DEBUG:
             print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
         who.change_location(self.destination)
+        for t in who.things:
+            t.change_location(self.destination)
 
 
 # There are several kinds of Person:
@@ -249,7 +254,7 @@ class Person(Container, Mobile_Thing):
         return people
 
     def room_things(self) -> List[Thing]:
-        things: List[Thing] = [t for t in self.location.things if not isinstance(t, Person)]
+        things: List[Thing] = [t for t in self.location.things if not t.owner and not isinstance(t, Person)]
         return things
 
     def people_things(self) -> List[Mobile_Thing]:
@@ -274,9 +279,12 @@ class Person(Container, Mobile_Thing):
             self.say("I try but cannot take " + item.name)
             return False
         else:
-            owner = item.location
-            self.say("I take " + item.name + " from " + owner.name)
-            item.change_location(self)
+            if item.owner:
+                n = item.owner.name
+            else:
+                n = item.location.name
+            self.say("I take " + item.name + " from " + n)
+            item.change_owner(self)
             return True
 
     def drop(self, itemname: str) -> bool:
@@ -284,6 +292,7 @@ class Person(Container, Mobile_Thing):
         if item:
             self.say("I drop " + item.name + " at " + self.location.name)
             item.change_location(self.location)
+            item.change_owner(None)
             return True
 
         else:
@@ -319,7 +328,7 @@ class Person(Container, Mobile_Thing):
             return False
         # pick a weapon: from player input, or the strongest item in inventory, or fists if you have no weapons
         weapons: List[Optional[Weapon]] = [x for x in self.things if isinstance(x, Weapon)]
-        if len(weapons) > 0:
+        if weapons:
             if len(weapons) == 1:
                 w = weapons[0]
             else:
@@ -375,11 +384,10 @@ class Autonomous_Person(Person):
             self.say("Aaaaahhhh! I suddenly feel very faint...")
         super(Autonomous_Person, self).die(perp)
 
-    def take(self) -> bool:
+    def take(self, itemname='') -> bool:
         items: List[Named_Object] = self.people_things() + self.room_things()
         if items:
-            super(Autonomous_Person, self).take(random.choice(items).name)
-            return True
+            return super(Autonomous_Person, self).take(random.choice(items).name)
         else:
             if DEBUG:
                 self.say("Whoops, there's nothing here to take.")
@@ -417,7 +425,7 @@ class Vampire(Person):
         if random.randint(0, 3) < 2:
             self.attack()
 
-    def attack(self) -> None:
+    def attack(self, target='') -> None:
         others = [p for p in self.people_around() if not isinstance(p, Vampire)]
         if len(others) > 0:
             victim = random.choice(others)
@@ -436,7 +444,7 @@ class Vampire(Person):
 class Body(Thing):
     """A Thing which has the potential to rise as a Vampire"""
 
-    def __init__(self, name: str, location: Place, perp: Union[Person, Vampire]):
+    def __init__(self, name: str, location: Place, perp: Optional[Union[Person, Vampire]]):
         self.age: int = 0
         self.perp = perp
 

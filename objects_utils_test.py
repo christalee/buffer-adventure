@@ -159,6 +159,7 @@ def test_mthing_init(place, mthing):
     dog = mthing("dog", floor)
 
     assert dog.creation_site == floor
+    assert not dog.owner
 
 
 def test_mthing_change_location(place, mthing):
@@ -173,6 +174,26 @@ def test_mthing_change_location(place, mthing):
     assert not floor.have_thing(dog)
     assert dog.location == bed
     assert bed.have_thing(dog)
+
+
+def test_mthing_change_owner(person, place, mthing):
+    floor = place("floor")
+    dog = mthing("dog", floor)
+    dave = person("Dave", floor)
+    bob = person("Bob", floor)
+
+    dog.change_owner(dave)
+    assert dog.owner == dave
+    assert dave.have_thing(dog)
+
+    dog.change_owner(bob)
+    assert dog.owner == bob
+    assert not dave.have_thing(dog)
+    assert bob.have_thing(dog)
+
+    dog.change_owner(None)
+    assert not dog.owner
+    assert not bob.have_thing(dog)
 
 
 # Holy_Object
@@ -334,7 +355,7 @@ def test_person_take(person, place, thing, mthing):
 
     dave.take(dog.name)
     assert dave.things == [dog]
-    assert dog.location == dave
+    assert dog.owner == dave
 
     # once you have it, you can't take it again
     assert not dave.take(dog.name)
@@ -353,11 +374,11 @@ def test_person_drop(person, place, mthing):
 
     dave.take(dog.name)
     assert dave.things == [dog]
-    assert dog.location == dave
+    assert dog.owner == dave
 
     dave.drop(dog.name)
     assert dave.things == []
-    assert dog.location == dave.location
+    assert not dog.owner
     assert dog.location == floor
     assert floor.have_thing(dog)
 
