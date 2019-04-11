@@ -17,11 +17,6 @@ def container():
 
 
 @pytest.fixture
-def clock():
-    return o.Clock()
-
-
-@pytest.fixture
 def thing():
     def _thing(name, place):
         return o.Thing(name, place)
@@ -78,8 +73,8 @@ def person():
 
 @pytest.fixture
 def autop():
-    def _autop(name, place, activity, miserly):
-        return o.Autonomous_Person(name, place, activity, miserly)
+    def _autop(name, place):
+        return o.Autonomous_Person(name, place)
 
     return _autop
 
@@ -98,8 +93,3 @@ def body():
         return o.Body(name, place, perp)
 
     return _body
-
-
-# @pytest.fixture
-# def avatar(name, place):
-#     return o.Avatar(name, place)

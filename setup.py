@@ -44,7 +44,8 @@ def create_people(world):
     names.remove(vamp)
     Vampire(vamp, random.choice(list(world.values())), None)
     for n in names:
-        Autonomous_Person(n, random.choice(list(world.values())), random.randint(0, 3), random.randint(0, 3))
+        Autonomous_Person(n, random.choice(list(world.values())))
+    Oracle(random.choice(list(world.values())))
 
 
 def setup():

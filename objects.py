@@ -9,6 +9,7 @@
 import random
 from typing import Callable, Dict, List, Optional, Union
 
+import data
 import utilities as u
 
 DEBUG: bool = True
@@ -125,8 +126,7 @@ class Thing(Named_Object):
 
     def say(self, text: str):
         # TODO tell_room()
-        if DEBUG:
-            print("At " + self.location.name + ", " + text)
+        print("At " + self.location.name + ", " + self.name + " says: " + text)
 
 
 class Mobile_Thing(Thing):
@@ -169,8 +169,8 @@ class Weapon(Mobile_Thing):
 
     def hit(self, perp: 'Person', target: 'Person'):
         self.say(perp.name + " lays the smackdown on " + target.name + '!')
-        normal = random.randint(1, self.damage)
-        chance = random.randint(1, 10)
+        normal = random.randrange(1, self.damage)
+        chance = random.randrange(1, 10)
 
         if chance == 1:
             target.suffer(10 * normal, perp)
@@ -239,10 +239,6 @@ class Person(Container, Mobile_Thing):
 
         Mobile_Thing.__init__(self, name, birthplace)
         super(Person, self).__init__()
-
-    def say(self, text: str):
-        # TODO tell_room()
-        print("At " + self.location.name + " " + self.name + " says: " + text)
 
     def have_fit(self) -> None:
         self.say("Yaaaah! I am upset!")
@@ -361,19 +357,19 @@ class Autonomous_Person(Person):
     activity determines maximum movement
     miserly determines chance of picking stuff up"""
 
-    def __init__(self, name: str, birthplace: Place, activity: int, miserly: int):
-        self.activity = activity
-        self.miserly = miserly
+    def __init__(self, name: str, birthplace: Place):
+        self.activity: int = random.randrange(1, 5)
+        self.miserly: int = random.randrange(1, 4)
 
         super(Autonomous_Person, self).__init__(name, birthplace)
         clock.add_callback(self.move_and_take)
 
     def move_and_take(self) -> None:
-        moves: int = random.randint(0, self.activity)
+        moves: int = random.randrange(self.activity)
         while moves > 0:
             self.wander()
             moves -= 1
-        if random.randint(0, self.miserly) == 0:
+        if random.randrange(self.miserly) == 0:
             self.take()
         if DEBUG:
             self.say("I'm done moving for now.")
@@ -394,6 +390,22 @@ class Autonomous_Person(Person):
             return False
 
 
+class Oracle(Autonomous_Person):
+    def __init__(self, birthplace: Place):
+        self.name: str = "nostradamus"
+
+        super(Oracle, self).__init__(self.name, birthplace)
+        clock.add_callback(self.prophecy)
+
+    def prophecy(self) -> None:
+        self.say(random.choice(data.sayings))
+
+    def die(self, perp: Person):
+        clock.remove_callback(self.prophecy)
+        self.say("At last, the stars are right!")
+        super(Oracle, self).die(perp)
+
+
 class Vampire(Person):
     """An undead Person that randomly attacks people."""
 
@@ -412,7 +424,7 @@ class Vampire(Person):
         if DEBUG:
             self.say(self.name + " turns to dust!")
         clock.remove_callback(self.rove_and_attack)
-        super(Vampire, self).die(perp)
+        self.delete()
 
     def gain_power(self) -> None:
         self.power += 1
@@ -420,9 +432,9 @@ class Vampire(Person):
             self.say(self.name + " gained power")
 
     def rove_and_attack(self) -> None:
-        if random.randint(0, 2) == 0:
+        if random.randrange(2) == 0:
             self.wander()
-        if random.randint(0, 3) < 2:
+        if random.randrange(3) < 2:
             self.attack()
 
     def attack(self, target='') -> None:
@@ -432,11 +444,10 @@ class Vampire(Person):
             self.say(self.name + " bites " + victim.name + "!")
             for t in victim.things:
                 if isinstance(t, Holy_Object):
-                    if DEBUG:
-                        self.say('Curses! Foiled again!')
+                    self.say('Curses! Foiled again!')
                     break
             else:
-                victim.suffer(random.randint(0, self.power), self)
+                victim.suffer(random.randrange(self.power), self)
                 if DEBUG:
                     print(self.name + " is tired")
 
@@ -447,9 +458,9 @@ class Body(Thing):
     def __init__(self, name: str, location: Place, perp: Optional[Union[Person, Vampire]]):
         self.age: int = 0
         self.perp = perp
-
-        super(Body, self).__init__(name, location)
         self.name = "body of " + name
+
+        super(Body, self).__init__(self.name, location)
         if isinstance(self.perp, Vampire):
             clock.add_callback(self.wait)
 

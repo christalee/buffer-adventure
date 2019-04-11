@@ -1,16 +1,11 @@
+import data
 import objects as o
 # import setup as s
 import utilities as u
 
-# class TestWorld():
-#     def __init__(self):
-#         self.buffer = []
-#
-#     def tell_room(self, location, text):
-#         self.buffer.append([location, text])
-#
-#     def lastsaid(self):
-#         return self.buffer[0]
+
+def c(captured):
+    return captured.readouterr().out
 
 
 # Named_Object
@@ -19,6 +14,7 @@ def test_object_init(named_object):
 
     assert no.name == "test object"
     assert no.installed
+    # assert getline(capsys.readouterr()) == "test object installed!"
 
 
 def test_object_delete(named_object):
@@ -27,6 +23,7 @@ def test_object_delete(named_object):
     assert no.installed
     no.delete()
     assert not no.installed
+    # assert getline(capsys.readouterr()) == "test object deleted!"
 
 
 # Container
@@ -90,46 +87,57 @@ def test_container_remove_thing(container, thing, place):
 
 
 # Clock
-def test_clock_init(clock):
-    assert clock.time == 0
-    assert clock.removed_callbacks == []
-    assert clock.name == 'Clock'
-    assert clock.callbacks == [clock.print_tick]
+def test_clock_init():
+    assert o.clock.time == 0
+    assert o.clock.removed_callbacks == []
+    assert o.clock.name == 'Clock'
+    assert o.clock.callbacks == [o.clock.print_tick]
 
 
-def test_clock_reset(clock):
-    clock.time = 5
-    clock.reset()
-    assert clock.time == 0
-    assert clock.callbacks == [clock.print_tick]
+def test_clock_reset():
+    o.clock.time = 5
+    o.clock.add_callback(o.clock.reset)
+    o.clock.reset()
+    assert o.clock.time == 0
+    assert o.clock.callbacks == [o.clock.print_tick]
 
 
-def test_clock_tick(clock):
+def test_clock_tick():
+    # clock = o.Clock()
+    # clock.tick()
     pass
 
 
-def test_clock_add_callback(clock):
-    assert clock.callbacks == [clock.print_tick]
+def test_clock_print_tick(capsys):
+    o.clock.print_tick()
+    assert "Clock Tick" in c(capsys)
 
-    clock.add_callback(clock.reset)
-    assert clock.callbacks == [clock.print_tick, clock.reset]
+
+def test_clock_add_callback(capsys):
+    assert o.clock.callbacks == [o.clock.print_tick]
+
+    o.clock.add_callback(o.clock.reset)
+    assert o.clock.callbacks == [o.clock.print_tick, o.clock.reset]
+    assert "Clock.Clock.reset added" in c(capsys)
     # you can't add the same callback twice
-    clock.add_callback(clock.reset)
-    assert clock.callbacks == [clock.print_tick, clock.reset]
+    o.clock.add_callback(o.clock.reset)
+    assert o.clock.callbacks == [o.clock.print_tick, o.clock.reset]
+    assert "Clock.Clock.reset already exists" in c(capsys)
 
 
-def test_clock_remove_callback(clock):
-    assert clock.removed_callbacks == []
-    assert clock.callbacks == [clock.print_tick]
+def test_clock_remove_callback(capsys):
+    assert o.clock.removed_callbacks == []
+    assert o.clock.callbacks == [o.clock.print_tick]
 
-    clock.remove_callback(clock.print_tick)
-    assert clock.callbacks == []
-    assert clock.removed_callbacks == [clock.print_tick]
+    o.clock.remove_callback(o.clock.print_tick)
+    assert o.clock.callbacks == []
+    assert o.clock.removed_callbacks == [o.clock.print_tick]
+    assert "Clock.Clock.print_tick removed" in c(capsys)
 
     # you can't remove the same callback twice
-    clock.remove_callback(clock.print_tick)
-    assert clock.callbacks == []
-    assert clock.removed_callbacks == [clock.print_tick]
+    o.clock.remove_callback(o.clock.print_tick)
+    assert o.clock.callbacks == []
+    assert o.clock.removed_callbacks == [o.clock.print_tick]
 
 
 # Thing
@@ -150,8 +158,13 @@ def test_thing_delete(place, thing):
     cat.delete()
     assert not bed.have_thing(cat)
 
-# def test_thing_say():
-    # find something to write here that isn't ridiculous
+
+def test_thing_say(place, thing, capsys):
+    bed = place("bed")
+    cat = thing("cat", bed)
+
+    cat.say("Meow!")
+    assert "At bed, cat says: Meow!" in c(capsys)
 
 
 # Mobile_Thing
@@ -299,13 +312,13 @@ def test_person_init(person, place):
     assert isinstance(bob, o.Mobile_Thing)
     assert isinstance(bob, o.Container)
 
-# def test_say(self):
-#     self.person.say("This is only a test.")
-#     self.assertEqual(world.lastsaid, [self.person.location, "At New York Alice says: This is only a test."])
 
-# def test_have_fit(self):
-#     self.person.have_fit()
-#     self.assertEqual(world.lastsaid, [self.person.location, "At New York Alice says: Yaaaah! I am upset!"])
+def test_have_fit(person, place, capsys):
+    floor = place("floor")
+    bob = person("Bob", floor)
+
+    bob.have_fit()
+    assert "Yaaaah! I am upset!" in c(capsys)
 
 
 def test_person_people_around(person, place, exit):
@@ -387,7 +400,7 @@ def test_person_drop(person, place, mthing):
     assert not dave.drop(dog.name)
 
 
-def test_person_go(person, place, exit):
+def test_person_go(person, place, exit, capsys):
     bed = place("bed")
     floor = place("floor")
     alice = person("Alice", bed)
@@ -398,6 +411,7 @@ def test_person_go(person, place, exit):
     assert alice.location == floor
     # if there isn't an exit, you can't go that way
     assert not alice.go("down")
+    assert "No exit in down direction" in c(capsys)
 
 
 def test_person_wander(person, place, exit):
@@ -413,7 +427,7 @@ def test_person_wander(person, place, exit):
     assert alice.location in [floor, table]
 
 
-def test_person_suffer(person, place):
+def test_person_suffer(person, place, capsys):
     floor = place("floor")
     dave = person("Dave", floor)
     bob = person("Bob", floor)
@@ -421,9 +435,10 @@ def test_person_suffer(person, place):
     assert dave.health == 3
     dave.suffer(2, bob)
     assert dave.health == 1
+    assert "Ouch!" in c(capsys)
 
 
-def test_person_attack(person, place, weapon):
+def test_person_attack(person, place, weapon, capsys):
     floor = place("floor")
     dave = person("Dave", floor)
     bob = person("Bob", floor)
@@ -431,9 +446,11 @@ def test_person_attack(person, place, weapon):
 
     # you can't attack someone who's not there
     assert not dave.attack("Alice")
+    assert "There's no one here to attack!" in c(capsys)
     # without a weapon, you can punch someone
     assert bob.health == 3
     dave.attack('Bob')
+    assert "Dave punches Bob!" in c(capsys)
     assert bob.health < 3
     # with a weapon, you can hit someone
     assert dave.health == 3
@@ -443,7 +460,7 @@ def test_person_attack(person, place, weapon):
     # TODO attack with multiple weapons
 
 
-def test_person_die(person, place, mthing, weapon):
+def test_person_die(person, place, mthing, weapon, capsys):
     floor = place("floor")
     dave = person("Dave", floor)
     bob = person("Bob", floor)
@@ -456,6 +473,7 @@ def test_person_die(person, place, mthing, weapon):
     assert dave.installed
 
     dave.die(bob)
+    assert "An earth-shattering, soul-piercing scream is heard..." in c(capsys)
     assert not dave.installed
     assert dave.things == []
     assert dog in floor.things
@@ -465,31 +483,34 @@ def test_person_die(person, place, mthing, weapon):
     assert b.name == "body of Dave"
 
 
-def test_person_change_location(person, place):
+def test_person_change_location(person, place, capsys):
     bed = place("bed")
     floor = place("floor")
     alice = person("Alice", bed)
+    dave = person("Dave", floor)
+    bob = person("Bob", floor)
 
     assert alice.location == bed
     alice.change_location(floor)
     assert alice.location == floor
+    assert "Hi Dave, Bob" in c(capsys)
 
 
 # Autonomous_Person
-def test_autop_init(autop, place, clock):
+def test_autop_init(autop, place):
     floor = place("floor")
-    chris = autop("Chris", floor, 3, 2)
+    chris = autop("Chris", floor)
 
-    assert chris.activity == 3
-    assert chris.miserly == 2
-    assert chris.move_and_take in clock.callbacks
+    assert chris.activity <= 5
+    assert chris.miserly <= 4
+    assert chris.move_and_take in o.clock.callbacks
 
 
 def test_autop_move_and_take(autop, place, exit, mthing, holy):
     bed = place("bed")
     floor = place("floor")
     table = place("table")
-    chris = autop("Chris", bed, 1, 0)
+    chris = autop("Chris", bed)
     exit1 = exit(bed, "down", floor)
     exit2 = exit(bed, "left", table)
     dog = mthing("dog", floor)
@@ -504,19 +525,19 @@ def test_autop_move_and_take(autop, place, exit, mthing, holy):
     assert len(chris.things) > 0
 
 
-def test_autop_die(autop, place, person, clock):
+def test_autop_die(autop, place, person):
     floor = place("floor")
-    chris = autop("Chris", floor, 3, 2)
+    chris = autop("Chris", floor)
     bob = person("Bob", floor)
 
     chris.die(bob)
-    assert chris.move_and_take not in clock.callbacks
+    assert chris.move_and_take not in o.clock.callbacks
     assert not chris.installed
 
 
 def test_autop_take(autop, mthing, holy, place):
     floor = place("floor")
-    chris = autop("Chris", floor, 3, 2)
+    chris = autop("Chris", floor)
     dog = mthing("dog", floor)
 
     assert chris.things == []
@@ -526,29 +547,58 @@ def test_autop_take(autop, mthing, holy, place):
     assert not chris.take()
 
 
+# Oracle
+def test_oracle_init(place):
+    floor = place("floor")
+    nostradamus = o.Oracle(floor)
+
+    assert nostradamus.name == "nostradamus"
+    assert nostradamus.prophecy in o.clock.callbacks
+
+
+def test_oracle_prophecy(place, capsys):
+    floor = place("floor")
+    nostradamus = o.Oracle(floor)
+
+    nostradamus.prophecy()
+    assert c(capsys).split(": ")[-1].strip() in data.sayings
+
+
+def test_oracle_die(place, vampire, capsys):
+    floor = place("floor")
+    nostradamus = o.Oracle(floor)
+    vlad = vampire("Vlad", floor, None)
+
+    nostradamus.die(vlad)
+    assert nostradamus.prophecy not in o.clock.callbacks
+    assert nostradamus.prophecy in o.clock.removed_callbacks
+    assert "At last, the stars are right!" in c(capsys)
+
 # Vampire
-def test_vampire_init(vampire, place, clock):
+
+
+def test_vampire_init(vampire, place):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
 
     assert vlad.power == 10
     assert not vlad.sire
-    assert vlad.rove_and_attack in clock.callbacks
+    assert vlad.rove_and_attack in o.clock.callbacks
 
     lestat = vampire("Lestat", floor, vlad)
     assert lestat.power == 2
     assert vlad.power == 11
     assert lestat.sire == vlad
-    assert lestat.rove_and_attack in clock.callbacks
+    assert lestat.rove_and_attack in o.clock.callbacks
 
 
-def test_vampire_die(vampire, place, person, clock):
+def test_vampire_die(vampire, place, person):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
     chris = person("Chris", floor)
 
     vlad.die(chris)
-    assert vlad.rove_and_attack in clock.removed_callbacks
+    assert vlad.rove_and_attack in o.clock.removed_callbacks
 
 
 def test_vampire_gain_power(vampire, place):
@@ -563,7 +613,7 @@ def test_vampire_rove_and_attack(vampire):
     pass
 
 
-def test_vampire_attack(vampire, place, person, holy, mthing):
+def test_vampire_attack(vampire, place, person, holy, mthing, capsys):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
     lestat = vampire("Lestat", floor, vlad)
@@ -574,6 +624,7 @@ def test_vampire_attack(vampire, place, person, holy, mthing):
     # have lestat attack because he's less powerful
     lestat.attack()
     assert chris.health <= 3
+    assert "Lestat bites Chris!" in c(capsys)
     # he shouldn't attack vlad
     assert vlad.health == 3
 
@@ -583,10 +634,11 @@ def test_vampire_attack(vampire, place, person, holy, mthing):
     chris.take(ark.name)
     lestat.attack()
     assert chris.health > 0
+    assert 'Curses! Foiled again!' in c(capsys)
 
 
 # Body
-def test_body_init(body, place, vampire, person, clock):
+def test_body_init(body, place, vampire, person):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
     mal = body("Mal", floor, vlad)
@@ -594,7 +646,7 @@ def test_body_init(body, place, vampire, person, clock):
     assert mal.age == 0
     assert mal.perp == vlad
     assert mal.name == "body of Mal"
-    assert mal.wait in clock.callbacks
+    assert mal.wait in o.clock.callbacks
 
     chris = person("Chris", floor)
     eve = body("Eve", floor, chris)
@@ -624,14 +676,14 @@ def test_body_wait(body, place, vampire):
     assert vmal.creation_site == floor
 
 
-def test_body_delete(body, place, vampire, clock):
+def test_body_delete(body, place, vampire):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
     mal = body("Mal", floor, vlad)
 
     mal.delete()
     assert not mal.installed
-    assert mal.wait in clock.removed_callbacks
+    assert mal.wait in o.clock.removed_callbacks
 
 
 # Avatar
@@ -648,7 +700,7 @@ def test_avatar_look():
     pass
 
 
-def test_avatar_go(place, exit, clock):
+def test_avatar_go(place, exit):
     bed = place("bed")
     floor = place("floor")
     table = place("table")
@@ -656,21 +708,23 @@ def test_avatar_go(place, exit, clock):
     exit2 = exit(bed, "left", table)
     talia = o.Avatar("Talia", bed)
 
+    t = o.current_time()
     assert talia.go("left")
     assert talia.location == table
-    assert clock.time == 1
+    assert o.clock.time == t + 1
 
     # you can't go in a direction without an exit
     assert not talia.go("right")
 
 
-def test_avatar_die(place, vampire):
+def test_avatar_die(place, vampire, capsys):
     bed = place("bed")
     talia = o.Avatar("Talia", bed)
     vlad = vampire("Vlad", bed, None)
 
     talia.die(vlad)
     assert not talia.installed
+    assert "Woe, I am slain!" in c(capsys)
 
 
 # Utils
