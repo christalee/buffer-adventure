@@ -21,17 +21,16 @@ def thingfind(name: str, thinglist: Sequence['Thing']) -> Optional['Thing']:
 
 
 def find_all(location: 'Place', type: type) -> List['Thing']:
-    # TODO rewrite using filter; figure out the type of type
+    # TODO rewrite using filter
     """Given a Place, return a list of all objects of a given type in that Place"""
-    return [x for x in location.things if isinstance(x, type)]
+    return list(filter(lambda x: isinstance(x, type), location.things))
 
 
 def find_exit(exitlist: List['Exit'], dir: str) -> Union[bool, 'Exit']:
     # TODO Add better handling for returning more than one exit here.
-    # Consider changing exits to be named by destination rather than direction??
     """Given a list of exits, find one in the desired direction."""
     if len(exitlist) > 0:
-        exit = [e for e in exitlist if e.direction == dir]
+        exit = [e for e in exitlist if dir in e.direction]
         if len(exit) == 1:
             return exit[0]
         elif len(exit) == 0:

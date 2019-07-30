@@ -46,6 +46,7 @@ def create_people(world):
     for n in names:
         Autonomous_Person(n, random.choice(list(world.values())))
     Oracle(random.choice(list(world.values())))
+    Slayer(random.choice(list(world.values())))
 
 
 def setup():
@@ -77,12 +78,14 @@ while True:
         break
     if action in ['up', 'down', 'north', 'south', 'east', 'west']:
         player.go(action)
-    if action in 'nsewup':
+    if action in 'nsewud':
         player.go(data.directions[action])
     if action in ['i', 'inventory']:
         print('Inventory: ' + ', '.join(u.names(player.things)))
     if action in ['?', 'h', 'help']:
         print(dir(player))
+    if action == "callbacks":
+        print(clock.callbacks)
     if ' ' in action:
         verb, object = action.split(' ')
         if hasattr(player, verb):

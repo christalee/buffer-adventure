@@ -16,12 +16,14 @@ DEBUG: bool = True
 
 
 class Named_Object:
-    """Named_Objects are the basic underlying object type in our system. For example, Persons, Places, and Things will all be kinds of (inherit from) Named_Objects.
+    """
+    Named_Objects are the basic underlying object type in our system. For example, Persons, Places, and Things will all be kinds of (inherit from) Named_Objects.
 
     Behavior (methods) supported by all Named_Objects:
     - Has a name that it can return
     - Handles an install message
-    - Handles a delete message"""
+    - Handles a delete message
+    """
 
     def __init__(self, name) -> None:
         self.name: str = name
@@ -29,7 +31,7 @@ class Named_Object:
         if DEBUG:
             print(self.name + " installed!")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
     def delete(self) -> None:
@@ -40,9 +42,11 @@ class Named_Object:
 
 
 class Container:
-    """A Container holds Things.
+    """
+    A Container holds Things.
 
-    This class is not meant for "stand-alone" objects; rather, it is expected that other classes will inherit from the Container class in order to be able to contain Things."""
+    This class is not meant for "stand-alone" objects; rather, it is expected that other classes will inherit from the Container class in order to be able to contain Things.
+    """
 
     def __init__(self) -> None:
         self.things: List['Thing'] = []
@@ -53,7 +57,7 @@ class Container:
     # TODO consider raising exceptions here?
     def add_thing(self, x: 'Thing') -> None:
         # TODO should these also world.tell_world()?
-        if not self.have_thing(x):
+        if not self.have_thing(x) and isinstance(x, Thing):
             self.things.append(x)
 
     # TODO consider raising exceptions here?
@@ -74,7 +78,7 @@ class Clock(Named_Object):
         super(Clock, self).__init__('Clock')
         self.add_callback(self.print_tick)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
     def reset(self) -> None:
@@ -179,9 +183,11 @@ class Weapon(Mobile_Thing):
 
 
 class Place(Container, Named_Object):
-    """A Place is a Container (so Things may be in the Place).
+    """
+    A Place is a Container (so Things may be in the Place).
 
-    A Place has Exits, which are passages from one place to another. One can retrieve all of the Exits of a Place, or an Exit in a given direction from Place."""
+    A Place has Exits, which are passages from one place to another. One can retrieve all of the Exits of a Place, or an Exit in a given direction from Place.
+    """
 
     def __init__(self, name: str):
         self.exits: List[Exit] = []
@@ -212,7 +218,7 @@ class Exit(Named_Object):
         self.direction = direction
         self.destination = destination
 
-        super(Exit, self).__init__(direction + " - " + destination.name)
+        super(Exit, self).__init__(direction + "->" + destination.name)
         self.origin.add_exit(self)
 
     def use(self, who: 'Person'):
@@ -236,6 +242,7 @@ class Person(Container, Mobile_Thing):
         self.health: int = 3
         self.strength: int = 1
         self.things: List[Mobile_Thing]
+        self.weapon: Optional[Weapon] = None
 
         Mobile_Thing.__init__(self, name, birthplace)
         super(Person, self).__init__()
@@ -246,7 +253,8 @@ class Person(Container, Mobile_Thing):
 
     # TODO combine _around methods?
     def people_around(self) -> List['Person']:
-        people: List[Person] = [p for p in self.location.things if p != self and isinstance(p, Person)]
+        people: List[Person] = u.find_all(self.location, Person)
+        people.remove(self)
         return people
 
     def room_things(self) -> List[Thing]:
@@ -289,14 +297,15 @@ class Person(Container, Mobile_Thing):
             self.say("I drop " + item.name + " at " + self.location.name)
             item.change_location(self.location)
             item.change_owner(None)
+            if item == self.weapon:
+                self.weapon = None
             return True
-
         else:
             self.say("I don't have that item!")
             return False
 
     def go(self, direction: str) -> bool:
-        exit = self.location.exit_towards(direction)
+        exit: Exit = self.location.exit_towards(direction)
         if exit:
             exit.use(self)
             return True
@@ -317,25 +326,33 @@ class Person(Container, Mobile_Thing):
         if DEBUG:
             print('Health: ' + str(self.health))
 
+    def equip(self, weapon: str):
+        w = u.thingfind(weapon, self.things)
+        if isinstance(w, Weapon):
+            self.weapon = w
+            if DEBUG:
+                self.say(weapon + " equipped!")
+        else:
+            self.say("You can only equip weapons, sorry.")
+
     def attack(self, target: str):
         victim: Optional[Person] = u.thingfind(target, self.people_around())
         if not victim:
             self.say("There's no one here to attack!")
             return False
-        # pick a weapon: from player input, or the strongest item in inventory, or fists if you have no weapons
-        weapons: List[Optional[Weapon]] = [x for x in self.things if isinstance(x, Weapon)]
-        if weapons:
-            if len(weapons) == 1:
-                w = weapons[0]
+
+        # pick a weapon: the strongest item in inventory, or fists if you have no weapons
+        if not self.weapon:
+            weapons: List[Optional[Weapon]] = u.find_all(self, Weapon)
+            if len(weapons) == 0:
+                self.say(self.name + " punches " + target + "!")
+                victim.suffer(3, self)
+                return True
             else:
-                print("Choose your weapon: " + ', '.join(u.names(weapons)))
-                w = u.thingfind(input(), weapons)
-                if not w:
-                    w = max(weapons, key=lambda x: x.damage)
-            w.hit(self, victim)
-        else:
-            self.say(self.name + " punches " + target + "!")
-            victim.suffer(3, self)
+                self.equip(max(weapons, key=lambda x: x.damage).name)
+
+        self.weapon.hit(self, victim)
+        return True
 
     def die(self, perp: 'Person'):
         for n in u.names(self.things):
@@ -352,10 +369,12 @@ class Person(Container, Mobile_Thing):
 
 
 class Autonomous_Person(Person):
-    """A Person that can change Places and pick up Things.
+    """
+    A Person that can change Places and pick up Things.
 
     activity determines maximum movement
-    miserly determines chance of picking stuff up"""
+    miserly determines chance of picking stuff up
+    """
 
     def __init__(self, name: str, birthplace: Place):
         self.activity: int = random.randrange(1, 5)
@@ -366,9 +385,8 @@ class Autonomous_Person(Person):
 
     def move_and_take(self) -> None:
         moves: int = random.randrange(self.activity)
-        while moves > 0:
+        for x in range(moves):
             self.wander()
-            moves -= 1
         if random.randrange(self.miserly) == 0:
             self.take()
         if DEBUG:
@@ -382,12 +400,14 @@ class Autonomous_Person(Person):
 
     def take(self, itemname='') -> bool:
         items: List[Named_Object] = self.people_things() + self.room_things()
-        if items:
-            return super(Autonomous_Person, self).take(random.choice(items).name)
-        else:
+        if itemname == '' and items:
+            itemname = random.choice(items).name
+        if not items:
             if DEBUG:
                 self.say("Whoops, there's nothing here to take.")
             return False
+
+        return super(Autonomous_Person, self).take(itemname)
 
 
 class Oracle(Autonomous_Person):
@@ -406,6 +426,49 @@ class Oracle(Autonomous_Person):
         super(Oracle, self).die(perp)
 
 
+class Slayer(Autonomous_Person):
+    def __init__(self, birthplace: Place):
+        self.name: str = "bram-stoker"
+
+        super(Slayer, self).__init__(self.name, birthplace)
+        self.activity: int = random.randrange(5, 10)
+        self.miserly: int = random.randrange(5, 10)
+
+    def wander(self):
+        self.slay()
+        super(Slayer, self).wander()
+
+    def slay(self):
+        vamps = u.find_all(self.location, Vampire)
+        if vamps:
+            target = random.choice(vamps)
+            self.attack(target)
+        else:
+            if DEBUG:
+                self.say("There's no one here to slay!")
+            return False
+
+    def take(self, itemname: str):
+        holies = u.find_all(self, Holy_Object)
+        if len(holies) > 0:
+            itemname = ''
+        else:
+            itemname = random.choice(holies).name
+
+        super(Slayer, self).take(itemname)
+
+    def die(self, perp: Person):
+        clock.remove_callback(self.slay)
+        self.say("Time for another ride on the wheel of dharma...")
+        super(Slayer, self).die(perp)
+        Slayer(random.choice(list(world.values())))
+
+    def suffer(self, hits: int, perp: Person):
+        if isinstance(perp, Vampire):
+            hits = 1
+        super(Slayer, self).suffer(hits, perp)
+
+
 class Vampire(Person):
     """An undead Person that randomly attacks people."""
 
@@ -418,12 +481,12 @@ class Vampire(Person):
             self.power = 10
 
         super(Vampire, self).__init__(name, birthplace)
-        clock.add_callback(self.rove_and_attack)
+        clock.add_callback(self.move_and_attack)
 
     def die(self, perp: Person):
         if DEBUG:
             self.say(self.name + " turns to dust!")
-        clock.remove_callback(self.rove_and_attack)
+        clock.remove_callback(self.move_and_attack)
         self.delete()
 
     def gain_power(self) -> None:
@@ -431,14 +494,16 @@ class Vampire(Person):
         if DEBUG:
             self.say(self.name + " gained power")
 
-    def rove_and_attack(self) -> None:
+    def move_and_attack(self) -> None:
         if random.randrange(2) == 0:
             self.wander()
         if random.randrange(3) < 2:
             self.attack()
+        if DEBUG:
+            self.say("I'm done moving for now.")
 
     def attack(self, target='') -> None:
-        others = [p for p in self.people_around() if not isinstance(p, Vampire)]
+        others = list(filter(lambda x: isinstance(x, Person) and not isinstance(x, Vampire), self.people_around()))
         if len(others) > 0:
             victim = random.choice(others)
             self.say(self.name + " bites " + victim.name + "!")
@@ -468,7 +533,7 @@ class Body(Thing):
         self.age += 1
         if self.age > 3:
             self.delete()
-            name = self.name.strip("body of ")
+            name = self.name.replace("body of ", '')
             if DEBUG:
                 self.say(name + " rises as a vampire!")
             Vampire(name, self.location, self.perp)
