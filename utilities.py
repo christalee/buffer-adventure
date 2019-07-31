@@ -21,7 +21,6 @@ def thingfind(name: str, thinglist: Sequence['Thing']) -> Optional['Thing']:
 
 
 def find_all(location: 'Place', type: type) -> List['Thing']:
-    # TODO rewrite using filter
     """Given a Place, return a list of all objects of a given type in that Place"""
     return list(filter(lambda x: isinstance(x, type), location.things))
 

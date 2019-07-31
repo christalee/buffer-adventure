@@ -106,12 +106,15 @@ class Clock(Named_Object):
                 print(x[-1].replace('>', '.') + x[2] + " added")
 
     def remove_callback(self, cb: Callable):
+        x = str(cb).split()
         if cb in self.callbacks:
             self.removed_callbacks.append(cb)
             self.callbacks.remove(cb)
             if DEBUG:
-                x = str(cb).split()
                 print(x[-1].replace('>', '.') + x[2] + " removed")
+        else:
+            if DEBUG:
+                print(x[-1].replace('>', '.') + x[2] + " doesn't exist")
 
 
 class Thing(Named_Object):
@@ -199,15 +202,15 @@ class Place(Container, Named_Object):
         return u.find_exit(self.exits, direction)
 
     def add_exit(self, exit: 'Exit'):
-        if exit not in self.exits:
+        if exit in self.exits:
+            if DEBUG:
+                print(self.name + " already has an exit to " + exit.name)
+            return False
+        else:
             self.exits.append(exit)
             if DEBUG:
                 print(exit.name + " added at " + self.name)
             return True
-        else:
-            if DEBUG:
-                print(self.name + " already has an exit to " + exit.name)
-            return False
 
 
 class Exit(Named_Object):
@@ -222,7 +225,6 @@ class Exit(Named_Object):
         self.origin.add_exit(self)
 
     def use(self, who: 'Person'):
-        # TODO Check that the Place stops having the Person when they use the Exit
         # TODO tell_room()
         if DEBUG:
             print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
@@ -233,8 +235,6 @@ class Exit(Named_Object):
 
 # There are several kinds of Person:
 # There are Autonomous_Persons, including Vampires, and there is the Avatar of the user. The foundation is here.
-
-
 class Person(Container, Mobile_Thing):
     """A Person can move around (is a Mobile_Thing), and can hold Things (is a Container). A Person has a plethora of methods."""
 
@@ -258,7 +258,8 @@ class Person(Container, Mobile_Thing):
         return people
 
     def room_things(self) -> List[Thing]:
-        things: List[Thing] = [t for t in self.location.things if not t.owner and not isinstance(t, Person)]
+        things: List[Thing] = list(filter(lambda t: not isinstance(t, Person) and not t.owner, self.location.things))
+        # [t for t in self.location.things if not t.owner and not isinstance(t, Person)]
         return things
 
     def people_things(self) -> List[Mobile_Thing]:
@@ -304,8 +305,12 @@ class Person(Container, Mobile_Thing):
             self.say("I don't have that item!")
             return False
 
-    def go(self, direction: str) -> bool:
-        exit: Exit = self.location.exit_towards(direction)
+    def go(self, direction: str = None) -> bool:
+        if direction:
+            exit: Exit = self.location.exit_towards(direction)
+        else:
+            exit: Exit = u.random_exit(self.location)
+
         if exit:
             exit.use(self)
             return True
@@ -313,10 +318,6 @@ class Person(Container, Mobile_Thing):
             # TODO tell_room()
             print(self.location, "No exit in " + direction + " direction")
             return False
-
-    def wander(self) -> None:
-        exit: Exit = u.random_exit(self.location)
-        exit.use(self)
 
     def suffer(self, hits: int, perp: 'Person'):
         self.say("Ouch! " + str(hits) + " damage is more than I want!")
@@ -386,7 +387,7 @@ class Autonomous_Person(Person):
     def move_and_take(self) -> None:
         moves: int = random.randrange(self.activity)
         for x in range(moves):
-            self.wander()
+            self.go()
         if random.randrange(self.miserly) == 0:
             self.take()
         if DEBUG:
@@ -411,6 +412,8 @@ class Autonomous_Person(Person):
 
 
 class Oracle(Autonomous_Person):
+    """An Oracle is an Autonomous_Person who walk the halls muttering gloomy predictions of the future."""
+
     def __init__(self, birthplace: Place):
         self.name: str = "nostradamus"
 
@@ -427,6 +430,8 @@ class Oracle(Autonomous_Person):
 
 
 class Slayer(Autonomous_Person):
+    """The Slayer wanders around, hunting Vampires (but no one else!) They only take 1 damage from Vampires and should look for a Holy_Object if they don't have one. If the Slayer is killed, a new one should emerge."""
+
     def __init__(self, birthplace: Place):
         self.name: str = "bram-stoker"
 
@@ -434,9 +439,9 @@ class Slayer(Autonomous_Person):
         self.activity: int = random.randrange(5, 10)
         self.miserly: int = random.randrange(5, 10)
 
-    def wander(self):
+    def go(self):
         self.slay()
-        super(Slayer, self).wander()
+        super(Slayer, self).go()
 
     def slay(self):
         vamps = u.find_all(self.location, Vampire)
@@ -448,17 +453,18 @@ class Slayer(Autonomous_Person):
                 self.say("There's no one here to slay!")
             return False
 
-    def take(self, itemname: str):
+    def take(self, itemname: str = ''):
         holies = u.find_all(self, Holy_Object)
         if len(holies) > 0:
             itemname = ''
         else:
-            itemname = random.choice(holies).name
+            holy_items = u.find_all(self.location, Holy_Object)
+            itemname = random.choice(holy_items).name
 
         super(Slayer, self).take(itemname)
 
     def die(self, perp: Person):
-        clock.remove_callback(self.slay)
+        global world
         self.say("Time for another ride on the wheel of dharma...")
         super(Slayer, self).die(perp)
         Slayer(random.choice(list(world.values())))
@@ -496,7 +502,7 @@ class Vampire(Person):
 
     def move_and_attack(self) -> None:
         if random.randrange(2) == 0:
-            self.wander()
+            self.go()
         if random.randrange(3) < 2:
             self.attack()
         if DEBUG:
