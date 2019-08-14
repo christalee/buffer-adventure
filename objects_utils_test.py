@@ -1,6 +1,5 @@
 import data
 import objects as o
-# import setup as s
 import utilities as u
 
 
@@ -103,6 +102,7 @@ def test_clock_reset():
 
 
 def test_clock_tick(capsys):
+    # TODO
     # o.clock.reset()
     #
     # o.clock.tick()
@@ -444,18 +444,6 @@ def test_person_go(person, place, exit, capsys):
     assert "No exit in down direction" in c(capsys)
 
 
-# def test_person_wander(person, place, exit):
-#     bed = place("bed")
-#     floor = place("floor")
-#     table = place("table")
-#     alice = person("Alice", bed)
-#     exit1 = exit(bed, "down", floor)
-#     exit2 = exit(bed, "left", table)
-#
-#     alice.wander()
-#     assert alice.location in [floor, table]
-
-
 def test_person_suffer(person, place, capsys):
     floor = place("floor")
     dave = person("Dave", floor)
@@ -630,7 +618,7 @@ def test_slayer_init(place):
 
     assert slayer.name == "bram-stoker"
     assert slayer.activity >= 5
-    assert slayer.miserly >= 5
+    assert slayer.health >= 5
 
 
 def test_slayer_slay(place, vampire, capsys):
@@ -728,6 +716,7 @@ def test_vampire_gain_power(vampire, place, capsys):
 
 
 def test_vampire_move_and_attack(vampire):
+    # TODO
     pass
 
 
@@ -743,6 +732,7 @@ def test_vampire_attack(vampire, place, person, holy, mthing, capsys):
     lestat.attack()
     assert chris.health <= 3
     assert "Lestat bites Chris!" in c(capsys)
+
     # he shouldn't attack vlad
     assert vlad.health == 3
 
@@ -815,6 +805,7 @@ def test_avatar_init(place):
 
 
 def test_avatar_look():
+    # TODO
     pass
 
 
@@ -906,8 +897,10 @@ def test_random_exit(exit, place):
 
 
 def test_current_time():
+    # TODO
     pass
 
 
 def test_run_clock():
+    # TODO
     pass

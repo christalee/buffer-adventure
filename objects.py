@@ -259,7 +259,6 @@ class Person(Container, Mobile_Thing):
 
     def room_things(self) -> List[Thing]:
         things: List[Thing] = list(filter(lambda t: not isinstance(t, Person) and not t.owner, self.location.things))
-        # [t for t in self.location.things if not t.owner and not isinstance(t, Person)]
         return things
 
     def people_things(self) -> List[Mobile_Thing]:
@@ -305,11 +304,12 @@ class Person(Container, Mobile_Thing):
             self.say("I don't have that item!")
             return False
 
-    def go(self, direction: str = None) -> bool:
+    def go(self, direction: Optional[str] = None) -> bool:
         if direction:
-            exit: Exit = self.location.exit_towards(direction)
+            exit: Optional[Exit] = self.location.exit_towards(direction)
         else:
             exit: Exit = u.random_exit(self.location)
+            direction = 'any'
 
         if exit:
             exit.use(self)
@@ -344,7 +344,7 @@ class Person(Container, Mobile_Thing):
 
         # pick a weapon: the strongest item in inventory, or fists if you have no weapons
         if not self.weapon:
-            weapons: List[Optional[Weapon]] = u.find_all(self, Weapon)
+            weapons: List[Weapon] = u.find_all(self, Weapon)
             if len(weapons) == 0:
                 self.say(self.name + " punches " + target + "!")
                 victim.suffer(3, self)
@@ -400,7 +400,7 @@ class Autonomous_Person(Person):
         super(Autonomous_Person, self).die(perp)
 
     def take(self, itemname='') -> bool:
-        items: List[Named_Object] = self.people_things() + self.room_things()
+        items: List[Thing] = self.people_things() + self.room_things()
         if itemname == '' and items:
             itemname = random.choice(items).name
         if not items:
@@ -437,7 +437,7 @@ class Slayer(Autonomous_Person):
 
         super(Slayer, self).__init__(self.name, birthplace)
         self.activity: int = random.randrange(5, 10)
-        self.miserly: int = random.randrange(5, 10)
+        self.health: int = random.randrange(5, 10)
 
     def go(self):
         self.slay()
@@ -454,16 +454,18 @@ class Slayer(Autonomous_Person):
             return False
 
     def take(self, itemname: str = ''):
+        # TODO review this to take items from people as well as places
         holies = u.find_all(self, Holy_Object)
-        if len(holies) > 0:
+        holy_items = u.find_all(self.location, Holy_Object)
+        if len(holies) > 0 or len(holy_items) == 0:
             itemname = ''
         else:
-            holy_items = u.find_all(self.location, Holy_Object)
             itemname = random.choice(holy_items).name
 
         super(Slayer, self).take(itemname)
 
     def die(self, perp: Person):
+        # TODO figure out how to respawn
         global world
         self.say("Time for another ride on the wheel of dharma...")
         super(Slayer, self).die(perp)

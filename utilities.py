@@ -20,12 +20,12 @@ def thingfind(name: str, thinglist: Sequence['Thing']) -> Optional['Thing']:
     return None
 
 
-def find_all(location: 'Place', type: type) -> List['Thing']:
+def find_all(location: 'Container', type: type) -> List['Thing']:
     """Given a Place, return a list of all objects of a given type in that Place"""
     return list(filter(lambda x: isinstance(x, type), location.things))
 
 
-def find_exit(exitlist: List['Exit'], dir: str) -> Union[bool, 'Exit']:
+def find_exit(exitlist: List['Exit'], dir: str) -> Optional['Exit']:
     # TODO Add better handling for returning more than one exit here.
     """Given a list of exits, find one in the desired direction."""
     if len(exitlist) > 0:
@@ -34,7 +34,7 @@ def find_exit(exitlist: List['Exit'], dir: str) -> Union[bool, 'Exit']:
             return exit[0]
         elif len(exit) == 0:
             print("No exits found in that direction.")
-            return False
+            return None
         else:
             print("Exits in that direction lead to: ")
             for e in exit:
@@ -43,7 +43,7 @@ def find_exit(exitlist: List['Exit'], dir: str) -> Union[bool, 'Exit']:
             return exit[int(index)]
     else:
         print("No exit.")
-        return False
+        return None
 
 
 def random_exit(place: 'Place') -> 'Exit':
