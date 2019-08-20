@@ -46,7 +46,8 @@ def find_exit(exitlist: List['Exit'], dir: str) -> Optional['Exit']:
         return None
 
 
-def random_exit(place: 'Place') -> 'Exit':
-    return random.choice(place.exits)
+def random_exit(place: 'Place') -> Optional['Exit']:
+    exit = random.choice(place.exits) if place.exits else None
+    return exit
 
 # TODO consider adding remove_duplicates here?

@@ -15,6 +15,8 @@ def create_world():
 
 
 def create_things(world):
+    rooms = list(world.values())
+
     for t in data.things:
         Thing(t['name'], world[t['place']])
 
@@ -22,31 +24,39 @@ def create_things(world):
         Mobile_Thing(m['name'], world[m['place']])
 
     for h in data.holy_objects:
-        Holy_Object(h, random.choice(list(world.values())))
+        Holy_Object(h, random.choice(rooms))
+
+    for w in data.weapons:
+        Weapon(w['name'], random.choice(rooms), w['damage'])
+
+    for t in data.tools:
+        Tool(t['name'], random.choice(rooms), t['magic'])
 
 
 def create_exits(world):
     # TODO modify Exit to be more parallel to Weapon and Thing??
     """Install an Exit between two Places."""
     for e in data.exits:
-        Exit(world[e['origin']], e['direction1'], world[e['destination']])
-        Exit(world[e['destination']], e['direction2'], world[e['origin']])
-
-
-def create_weapons(world):
-    for w in data.weapons:
-        Weapon(w['name'], random.choice(list(world.values())), w['damage'])
+        Exit(world[e['origin']], e['direction1'], world[e['destination']], e['magic'])
+        Exit(world[e['destination']], e['direction2'], world[e['origin']], e['magic'])
 
 
 def create_people(world):
+    rooms = list(world.values())
     names = data.names
     vamp = random.choice(names)
     names.remove(vamp)
-    Vampire(vamp, random.choice(list(world.values())), None)
+    Vampire(vamp, random.choice(rooms), None)
     for n in names:
-        Autonomous_Person(n, random.choice(list(world.values())))
-    Oracle(random.choice(list(world.values())))
-    Slayer(random.choice(list(world.values())))
+        Autonomous_Person(n, random.choice(rooms))
+    Oracle(random.choice(rooms))
+    Slayer(random.choice(rooms))
+    Hacker(random.choice(rooms))
+
+
+def create_specials(w):
+    for s in data.special_places:
+        w[s] = Special_Location(s)
 
 
 def setup():
@@ -55,13 +65,14 @@ def setup():
 
     world = create_world()
     create_things(world)
-    create_exits(world)
-    create_weapons(world)
     create_people(world)
 
     print('The Adventures of Buffer the Vampire Slayer')
     name = input('player name: ')
     player = Avatar(name, random.choice(list(world.values())))
+
+    create_specials(world)
+    create_exits(world)
     player.look()
 
     return world, player
@@ -76,9 +87,9 @@ while True:
     action = input('What would you like to do? ')
     if action in ['q', 'quit', 'exit'] or player.health <= 0:
         break
-    if action in ['up', 'down', 'north', 'south', 'east', 'west']:
+    if action in data.directions.values():
         player.go(action)
-    if action in 'nsewud':
+    if action in data.directions.keys():
         player.go(data.directions[action])
     if action in ['i', 'inventory']:
         print('Inventory: ' + ', '.join(u.names(player.things)))

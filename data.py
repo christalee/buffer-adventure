@@ -2,6 +2,8 @@ from typing import Dict, List, Union
 
 directions: Dict[str, str] = {'n': 'north', 's': 'south', 'e': 'east', 'w': 'west', 'u': 'up', 'd': 'down'}
 
+# directions: List[str] = ['up', 'down', 'north', 'south', 'east', 'west']
+
 names: List[str] = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-frosh", "lambda-man", "grumpy-grad-student", "jack-florey"]
 
 places: List[str] = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301", "senior-haus", "east-campus", "random-hall", "coffeehouse", "54-100", "roofdeck", 'pika']
@@ -11,7 +13,7 @@ special_places: List[str] = ["54-and-a-half", "the-point", "great-dome", "little
 # {'origin': , 'direction1': , 'direction2': , 'destination': },
 # TODO implement logic so direction2 is the opposite of direction1
 # here or in the install or init or create method?
-exits: List[Dict[str, str]] = [
+exits: List[Dict[str, Union[str, int]]] = [
     {'origin': "lobby-10", 'direction1': "up", 'direction2': "down", 'destination': "10-250"},
     {'origin': "grendels-den", 'direction1': "up", 'direction2': "down", 'destination': "lobby-10"},
     {'origin': "10-250", 'direction1': "up", 'direction2': "down", 'destination': "barker-library"},
@@ -40,9 +42,14 @@ exits: List[Dict[str, str]] = [
     {'origin': 'random-hall', 'direction1': 'up', 'direction2': 'down', 'destination': 'roofdeck'},
     {'origin': 'student-center', 'direction1': 'west', 'direction2': 'east', 'destination': 'pika'},
     {'origin': 'random-hall', 'direction1': 'west', 'direction2': 'east', 'destination': 'pika'},
-    # {'origin': , 'direction1': , 'direction2': , 'destination': },
-    # {'origin': , 'direction1': , 'direction2': , 'destination': },
-    # {'origin': , 'direction1': , 'direction2': , 'destination': },
+    {'origin': 'senior-haus', 'direction1': 'east', 'direction2': 'west', 'destination': 'grad-student-office', 'magic': 4},
+    {'origin': 'east-campus', 'direction1': 'north', 'direction2': 'south', 'destination': 'the-point', 'magic': 3},
+    {'origin': '54-100', 'direction1': 'up', 'direction2': 'down', 'destination': 'green-roof', 'magic': 8},
+    {'origin': '54-100', 'direction1': 'down', 'direction2': 'up', 'destination': '54-and-a-half', 'magic': 4},
+    {'origin': 'lobby-7', 'direction1': 'up', 'direction2': 'down', 'destination': 'little-dome', 'magic': 3},
+    {'origin': 'barker-library', 'direction1': 'up', 'direction2': 'down', 'destination': 'great-dome', 'magic': 8},
+    {'origin': 'building-13', 'direction1': 'down', 'direction2': 'up', 'destination': 'hell', 'magic': 3},
+    # {'origin': , 'direction1': , 'direction2': , 'destination': , 'magic': },
 ]
 
 # {'name': , 'place': },

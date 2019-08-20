@@ -48,6 +48,13 @@ def weapon():
 
 
 @pytest.fixture
+def tool():
+    def _tool(name, place, magic):
+        return o.Tool(name, place, magic)
+    return _tool
+
+
+@pytest.fixture
 def place():
     def _place(name):
         return o.Place(name)
@@ -56,9 +63,17 @@ def place():
 
 
 @pytest.fixture
+def s_place():
+    def _special(name):
+        return o.Special_Location(name)
+
+    return _special
+
+
+@pytest.fixture
 def exit():
-    def _exit(origin, name, destination):
-        return o.Exit(origin, name, destination)
+    def _exit(origin, name, destination, magic=0):
+        return o.Exit(origin, name, destination, magic)
 
     return _exit
 

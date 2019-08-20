@@ -71,6 +71,7 @@ class Clock(Named_Object):
     """A Clock is an object with a notion of time, which it imparts to all objects that have asked for it. It does this by invoking a list of callbacks whenever the tick() method is invoked."""
 
     def __init__(self) -> None:
+        # TODO is there an actual need for self.removed_callbacks?
         self.time: int = 0
         self.callbacks: List[Callable] = []
         self.removed_callbacks: List[Callable] = []
@@ -82,6 +83,7 @@ class Clock(Named_Object):
         return self.name
 
     def reset(self) -> None:
+        # should this just... create a new Clock?
         self.time = 0
         self.callbacks = []
         self.add_callback(self.print_tick)
@@ -176,13 +178,22 @@ class Weapon(Mobile_Thing):
 
     def hit(self, perp: 'Person', target: 'Person'):
         self.say(perp.name + " lays the smackdown on " + target.name + '!')
-        normal = random.randrange(1, self.damage)
-        chance = random.randrange(1, 10)
+        normal = random.randint(1, self.damage)
 
+        chance = random.randint(1, 10)
         if chance == 1:
-            target.suffer(10 * normal, perp)
-        else:
-            target.suffer(normal, perp)
+            normal *= 10
+
+        hits = normal + perp.strength
+        target.suffer(hits, perp)
+
+
+class Tool(Mobile_Thing):
+    """A Tool is a Mobile_Thing that contributes to its owner's magic."""
+
+    def __init__(self, name: str, location: 'Place', magic: int):
+        self.magic = magic
+        super(Tool, self).__init__(name, location)
 
 
 class Place(Container, Named_Object):
@@ -202,7 +213,7 @@ class Place(Container, Named_Object):
         return u.find_exit(self.exits, direction)
 
     def add_exit(self, exit: 'Exit'):
-        if exit in self.exits:
+        if exit.name in u.names(self.exits):
             if DEBUG:
                 print(self.name + " already has an exit to " + exit.name)
             return False
@@ -213,24 +224,44 @@ class Place(Container, Named_Object):
             return True
 
 
+class Special_Location(Place):
+    """A Special_Location is a Place only reachable through an Exit with a non-zero magic level. When a Hacker finds themself in one, they sign in."""
+    # TODO come up with a better name, ugh
+
+    def __init__(self, name: str):
+        super(Special_Location, self).__init__(name)
+
+
 class Exit(Named_Object):
     """An Exit leads from one Place to another Place in some direction."""
 
-    def __init__(self, origin: Place, direction: str, destination: Place):
+    def __init__(self, origin: Place, direction: str, destination: Place, magic: int = 0):
         self.origin = origin
         self.direction = direction
         self.destination = destination
+        self.magic = magic
 
         super(Exit, self).__init__(direction + "->" + destination.name)
-        self.origin.add_exit(self)
+
+        if isinstance(self.destination, Special_Location) and self.magic == 0:
+            if DEBUG:
+                print(self.name + " must have some magic to reach this destination")
+            self.delete()
+        else:
+            self.origin.add_exit(self)
 
     def use(self, who: 'Person'):
         # TODO tell_room()
-        if DEBUG:
-            print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
-        who.change_location(self.destination)
-        for t in who.things:
-            t.change_location(self.destination)
+        if who.magic >= self.magic:
+            if DEBUG:
+                print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
+            who.change_location(self.destination)
+            for t in who.things:
+                t.change_location(self.destination)
+
+        else:
+            print(who.name + " is insufficiently clueful to use this route")
+            return False
 
 
 # There are several kinds of Person:
@@ -241,6 +272,7 @@ class Person(Container, Mobile_Thing):
     def __init__(self, name: str, birthplace: Place):
         self.health: int = 3
         self.strength: int = 1
+        self.magic: int = 0
         self.things: List[Mobile_Thing]
         self.weapon: Optional[Weapon] = None
 
@@ -289,13 +321,18 @@ class Person(Container, Mobile_Thing):
                 n = item.location.name
             self.say("I take " + item.name + " from " + n)
             item.change_owner(self)
+
+            if isinstance(item, Tool):
+                self.magic += item.magic
+
             return True
 
     def drop(self, itemname: str) -> bool:
         item: Optional[Mobile_Thing] = u.thingfind(itemname, self.things)
         if item:
             self.say("I drop " + item.name + " at " + self.location.name)
-            item.change_location(self.location)
+            # TODO is this needed? cf. exit.use - item should already be in self.location
+            # item.change_location(self.location)
             item.change_owner(None)
             if item == self.weapon:
                 self.weapon = None
@@ -320,8 +357,10 @@ class Person(Container, Mobile_Thing):
             return False
 
     def suffer(self, hits: int, perp: 'Person'):
+        hits = max(hits - self.strength, 0)
         self.say("Ouch! " + str(hits) + " damage is more than I want!")
         self.health -= hits
+
         if self.health <= 0:
             self.die(perp)
         if DEBUG:
@@ -348,6 +387,8 @@ class Person(Container, Mobile_Thing):
             if len(weapons) == 0:
                 self.say(self.name + " punches " + target + "!")
                 victim.suffer(3, self)
+                # punching makes you stronger
+                self.strength += 1
                 return True
             else:
                 self.equip(max(weapons, key=lambda x: x.damage).name)
@@ -378,8 +419,8 @@ class Autonomous_Person(Person):
     """
 
     def __init__(self, name: str, birthplace: Place):
-        self.activity: int = random.randrange(1, 5)
-        self.miserly: int = random.randrange(1, 4)
+        self.activity: int = random.randint(1, 3)
+        self.miserly: int = random.randint(1, 3)
 
         super(Autonomous_Person, self).__init__(name, birthplace)
         clock.add_callback(self.move_and_take)
@@ -390,6 +431,8 @@ class Autonomous_Person(Person):
             self.go()
         if random.randrange(self.miserly) == 0:
             self.take()
+        if len(self.people_around()) > 0:
+            self.get_magic()
         if DEBUG:
             self.say("I'm done moving for now.")
 
@@ -401,14 +444,23 @@ class Autonomous_Person(Person):
 
     def take(self, itemname='') -> bool:
         items: List[Thing] = self.people_things() + self.room_things()
-        if itemname == '' and items:
-            itemname = random.choice(items).name
         if not items:
             if DEBUG:
                 self.say("Whoops, there's nothing here to take.")
             return False
 
+        if itemname == '' and items:
+            itemname = random.choice(items).name
         return super(Autonomous_Person, self).take(itemname)
+
+    def get_magic(self):
+        jacks: List[Autonomous_Person] = list(filter(lambda x: x.magic > 5, u.find_all(self.location, Autonomous_Person)))
+        if len(jacks) > 0:
+            self.magic += random.randint(1, 3)
+            random.choice(jacks).shirt()
+
+    def shirt(self):
+        self.say(self.name + ' is wearing a shirt that says: ' + random.choice(data.shirts))
 
 
 class Oracle(Autonomous_Person):
@@ -436,8 +488,9 @@ class Slayer(Autonomous_Person):
         self.name: str = "bram-stoker"
 
         super(Slayer, self).__init__(self.name, birthplace)
-        self.activity: int = random.randrange(5, 10)
-        self.health: int = random.randrange(5, 10)
+        self.activity: int = random.randint(5, 10)
+        self.health: int = random.randint(5, 10)
+        self.magic: int = random.randint(1, 5)
 
     def go(self):
         self.slay()
@@ -456,7 +509,7 @@ class Slayer(Autonomous_Person):
     def take(self, itemname: str = ''):
         # TODO review this to take items from people as well as places
         holies = u.find_all(self, Holy_Object)
-        holy_items = u.find_all(self.location, Holy_Object)
+        holy_items = list(filter(lambda t: isinstance(t, Holy_Object), self.room_things() + self.people_things()))
         if len(holies) > 0 or len(holy_items) == 0:
             itemname = ''
         else:
@@ -473,8 +526,22 @@ class Slayer(Autonomous_Person):
 
     def suffer(self, hits: int, perp: Person):
         if isinstance(perp, Vampire):
-            hits = 1
+            hits = 1 + self.strength
         super(Slayer, self).suffer(hits, perp)
+
+
+class Hacker(Autonomous_Person):
+    """The Hacker is available to learn magic from"""
+
+    def __init__(self, birthplace: Place):
+        self.name: str = 'jack-florey'
+        super(Hacker, self).__init__(self.name, birthplace)
+        self.magic: int = 10
+
+    def go(self):
+        if isinstance(self.location, Special_Location):
+            self.say("I'm going to sign in at " + self.location.name)
+        super(Hacker, self).go()
 
 
 class Vampire(Person):
@@ -482,25 +549,23 @@ class Vampire(Person):
 
     def __init__(self, name: str, birthplace: Place, sire: Optional['Vampire']):
         self.sire = sire
-        if self.sire:
-            self.power = 2
-            self.sire.gain_power()
-        else:
-            self.power = 10
 
         super(Vampire, self).__init__(name, birthplace)
         clock.add_callback(self.move_and_attack)
+
+        if self.sire:
+            self.strength = 2
+            self.sire.strength += 1
+            if DEBUG:
+                self.sire.say(self.sire.name + " got stronger")
+        else:
+            self.strength = 10
 
     def die(self, perp: Person):
         if DEBUG:
             self.say(self.name + " turns to dust!")
         clock.remove_callback(self.move_and_attack)
         self.delete()
-
-    def gain_power(self) -> None:
-        self.power += 1
-        if DEBUG:
-            self.say(self.name + " gained power")
 
     def move_and_attack(self) -> None:
         if random.randrange(2) == 0:
@@ -520,7 +585,7 @@ class Vampire(Person):
                     self.say('Curses! Foiled again!')
                     break
             else:
-                victim.suffer(random.randrange(self.power), self)
+                victim.suffer(random.randrange(self.strength), self)
                 if DEBUG:
                     print(self.name + " is tired")
 

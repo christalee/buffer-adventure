@@ -19,7 +19,6 @@ def test_object_init(named_object, capsys):
 def test_object_delete(named_object, capsys):
     n = named_object("test object")
 
-    assert n.installed
     n.delete()
     assert not n.installed
     assert "test object deleted!" in c(capsys)
@@ -101,13 +100,20 @@ def test_clock_reset():
     assert o.clock.callbacks == [o.clock.print_tick]
 
 
-def test_clock_tick(capsys):
+def test_clock_tick(place, thing, capsys):
     # TODO
+    # bed = place("bed")
+    # cat = thing("cat", bed)
     # o.clock.reset()
+    #
+    # o.clock.add_callback(cat.say("Meow!"))
+    # o.clock.add_callback(bed.have_thing(cat))
     #
     # o.clock.tick()
     # assert o.clock.time == 1
+    #
     # assert "Clock Tick" in c(capsys)
+    # assert o.clock.removed_callbacks == []
     pass
 
 
@@ -159,7 +165,6 @@ def test_thing_delete(place, thing):
     bed = place("bed")
     cat = thing("cat", bed)
 
-    assert bed.have_thing(cat)
     cat.delete()
     assert not bed.have_thing(cat)
 
@@ -205,7 +210,7 @@ def test_mthing_change_owner(person, place, mthing, capsys):
     assert dog.owner == bob
     assert not dave.have_thing(dog)
     assert bob.have_thing(dog)
-    assert "At floor, Dave says: I lose dog" in c(capsys)
+    assert "Dave says: I lose dog" in c(capsys)
 
     dog.change_owner(None)
     assert not dog.owner
@@ -244,6 +249,14 @@ def test_weapon_hit(weapon, place, person, capsys):
     assert "Bob lays the smackdown on Dave!" in c(capsys)
 
 
+# Tool
+def test_tool_init(tool, place):
+    floor = place("floor")
+    slide = tool("slide", floor, 3)
+
+    assert slide.magic == 3
+
+
 # Place
 def test_place_init(place):
     bed = place("bed")
@@ -267,40 +280,91 @@ def test_place_add_exit(place, exit, capsys):
     bed = place("bed")
     floor = place("floor")
     exit1 = exit(bed, "down", floor)
+    exit2 = exit(bed, "down", floor)
 
     # TODO is this needed, since exit1 calls bed.add_exit?
     assert bed.exits == [exit1]
     assert "down->floor added at bed"
 
     # can't add_exit twice
-    assert not bed.add_exit(exit1)
+    assert not bed.add_exit(exit2)
     assert "bed already has an exit to down->floor" in c(capsys)
 
 
+# Special_Location
+# again, is this necessary?
+def test_special_location_init(s_place):
+    tomb = s_place("tomb")
+
+    assert tomb.name == "tomb"
+
+
 # Exit
-def test_exit_init(place, exit):
+def test_exit_init(place, exit, s_place, capsys):
     bed = place("bed")
     floor = place("floor")
-    exit1 = exit(bed, "down", floor)
+    tomb = s_place("tomb")
+    shaft = s_place("shaft")
 
+    # Exit from Place to Place, no magic
+    exit1 = exit(bed, "down", floor)
     assert exit1.origin == bed
     assert exit1.direction == 'down'
     assert exit1.destination == floor
-    assert bed.exits == [exit1]
+    assert exit1.magic == 0
     assert exit1.name == 'down->floor'
 
+    # TODO is this how I want to test success/failure for installation?
+    # Exit from Place to Place, magic
+    exit2 = exit(floor, "up", bed, 4)
+    assert exit2
 
-def test_exit_use(place, exit, person):
+    # Exit from Special_Location to Special_Location, magic
+    exit3 = exit(shaft, "down", tomb, 2)
+    assert exit3
+
+    # Exit from Place to Special_Location, no magic - should fail
+    exit4 = exit(bed, "down", tomb)
+    assert "down->tomb must have some magic" in c(capsys)
+    assert not exit4.installed
+
+    # Exit from Place to Special_Location, magic
+    exit5 = exit(bed, "up", shaft, 4)
+    assert exit5
+
+    assert bed.exits == [exit1, exit5]
+    assert floor.exits == [exit2]
+    assert shaft.exits == [exit3]
+
+
+def test_exit_use(place, exit, person, mthing, capsys):
     bed = place("bed")
     floor = place("floor")
     exit1 = exit(bed, "down", floor)
+    exit2 = exit(floor, "up", bed, 4)
     alice = person("Alice", bed)
+    jack = o.Hacker(floor)
+    dog = mthing("dog", bed)
 
+    assert alice.take(dog.name)
     exit1.use(alice)
     assert alice.location == floor
     assert floor.have_thing(alice)
     assert not bed.have_thing(alice)
-    # TODO check that Alice's things go with her
+
+    assert dog.location == floor
+    assert floor.have_thing(dog)
+    assert not bed.have_thing(dog)
+
+    # Alice can't use exits that require magic
+    exit2.use(alice)
+    assert alice.location == floor
+    assert "Alice is insufficiently clueful" in c(capsys)
+
+    # but Jack can
+    exit2.use(jack)
+    assert jack.location == bed
+    assert "jack-florey moves from floor to bed" in c(capsys)
 
 
 # Person
@@ -310,6 +374,7 @@ def test_person_init(person, place):
 
     assert bob.health == 3
     assert bob.strength == 1
+    assert bob.magic == 0
     assert not bob.weapon
 
     assert isinstance(bob, o.Mobile_Thing)
@@ -339,28 +404,37 @@ def test_person_people_around(person, place, exit):
     assert bob.people_around() == [alice]
 
 
-def test_person_room_things(person, place, thing):
+def test_person_room_things(person, place, thing, mthing):
     bed = place("bed")
     cat = thing("cat", bed)
     blanket = thing("blanket", bed)
+    dog = mthing("dog", bed)
+    bob = person("Bob", bed)
     alice = person("Alice", bed)
 
+    assert alice.room_things() == [cat, blanket, dog]
+
+    # once a Thing has an owner, it shouldn't show up in room_things
+    bob.take(dog.name)
     assert alice.room_things() == [cat, blanket]
 
 
-def test_person_people_things(person, place, mthing, capsys):
+def test_person_people_things(person, place, thing, mthing, capsys):
     floor = place("floor")
     dave = person("Dave", floor)
     bob = person("Bob", floor)
     dog = mthing("dog", floor)
+    cat = mthing("cat", floor)
+    blanket = thing("blanket", floor)
 
+    # cat and blanket have no owner, so they shouldn't show up in people_things
     assert dave.take(dog.name)
     assert bob.people_things() == [dog]
     assert dave.people_things() == []
-    assert "At floor, Bob says: Dave has dog" in c(capsys)
+    assert "Bob says: Dave has dog" in c(capsys)
 
 
-def test_person_take(person, place, thing, mthing, capsys):
+def test_person_take(person, place, thing, mthing, tool, capsys):
     bed = place("bed")
     floor = place("floor")
     dave = person("Dave", floor)
@@ -368,6 +442,7 @@ def test_person_take(person, place, thing, mthing, capsys):
     rug = thing("rug", floor)
     dog = mthing("dog", floor)
     pillow = mthing("pillow", bed)
+    slide = tool("slide", floor, 3)
 
     assert dave.take(dog.name)
     assert dave.things == [dog]
@@ -396,6 +471,10 @@ def test_person_take(person, place, thing, mthing, capsys):
     assert dog.owner == bob
     assert 'I take dog from Dave' in c(capsys)
 
+    # if you pick up a Tool, it increases your magic
+    assert bob.take(slide.name)
+    assert bob.magic == slide.magic
+
 
 def test_person_drop(person, place, mthing, weapon, capsys):
     floor = place("floor")
@@ -408,8 +487,9 @@ def test_person_drop(person, place, mthing, weapon, capsys):
     assert "I drop dog at floor" in c(capsys)
     assert dave.things == []
     assert not dog.owner
-    assert dog.location == floor
     assert floor.have_thing(dog)
+
+    # TODO check location, have_thing of mthings before and after take and drop
 
     # you can't drop a thing you don't have
     assert not dave.drop(dog.name)
@@ -417,6 +497,7 @@ def test_person_drop(person, place, mthing, weapon, capsys):
 
     # drop your weapon, rebel scum!
     assert dave.take(relic.name)
+    dave.equip(relic.name)
     assert dave.drop(relic.name)
     assert not dave.weapon
 
@@ -449,11 +530,12 @@ def test_person_suffer(person, place, capsys):
     dave = person("Dave", floor)
     bob = person("Bob", floor)
 
+    d_health = dave.health
     dave.suffer(2, bob)
-    assert dave.health == 1
+    assert dave.health == d_health - 2 + dave.strength
     assert "Ouch!" in c(capsys)
 
-    dave.suffer(2, bob)
+    dave.suffer(5, bob)
     assert not dave.installed
     assert "body of Dave" in u.names(floor.things)
 
@@ -464,14 +546,14 @@ def test_person_equip(person, place, weapon, mthing, capsys):
     chair = weapon("chair", floor, 2)
     dog = mthing("dog", floor)
 
-    dave.take(chair.name)
+    assert dave.take(chair.name)
     dave.equip(chair.name)
     assert dave.weapon == chair
     assert "chair equipped!" in c(capsys)
 
     # can't equip Things that aren't Weapons
-    dave.take(dog)
-    dave.equip(dog)
+    assert dave.take(dog.name)
+    dave.equip(dog.name)
     assert "You can only equip weapons, sorry." in c(capsys)
 
 
@@ -488,9 +570,11 @@ def test_person_attack(person, place, weapon, capsys):
     assert "There's no one here to attack!" in c(capsys)
 
     # without a weapon, you can punch someone
+    d_strength = dave.strength
     dave.attack('Bob')
     assert "Dave punches Bob!" in c(capsys)
     assert bob.health < 3
+    assert dave.strength == d_strength + 1
 
     # with a weapon, you can hit someone
     dave.take(chair.name)
@@ -528,7 +612,6 @@ def test_person_change_location(person, place, capsys):
     bob = person("Bob", floor)
 
     alice.change_location(floor)
-    assert alice.location == floor
     assert "Hi Dave, Bob" in c(capsys)
 
 
@@ -537,8 +620,8 @@ def test_autop_init(autop, place):
     floor = place("floor")
     chris = autop("Chris", floor)
 
-    assert chris.activity <= 5
-    assert chris.miserly <= 4
+    assert chris.activity in range(1, 4)
+    assert chris.miserly in range(1, 4)
     assert chris.move_and_take in o.clock.callbacks
 
 
@@ -554,10 +637,14 @@ def test_autop_move_and_take(autop, place, exit, mthing, holy, capsys):
     dog = mthing("dog", floor)
     pillow = mthing("pillow", bed)
     grail = holy('grail', table)
+    jack = o.Hacker(bed)
+    liz = o.Hacker(floor)
+    jessie = o.Hacker(table)
 
     chris.miserly = 1
     chris.move_and_take()
     assert len(chris.things) > 0
+    assert chris.magic > 0
     assert "I'm done moving for now" in c(capsys)
 
 
@@ -569,7 +656,6 @@ def test_autop_die(autop, place, person, capsys):
     chris.die(bob)
     assert chris.move_and_take not in o.clock.callbacks
     assert "I suddenly feel very faint" in c(capsys)
-    assert not chris.installed
 
 
 def test_autop_take(autop, mthing, place, capsys):
@@ -581,8 +667,35 @@ def test_autop_take(autop, mthing, place, capsys):
     assert chris.things == [dog]
 
     # can't take something that isn't there
-    assert not chris.take()
+    assert not chris.take("cat")
     assert "Whoops, there's nothing here to take." in c(capsys)
+
+    # seriously, there's nothing to take
+    assert not chris.take()
+
+
+def test_autop_get_magic(autop, place, capsys):
+    floor = place("floor")
+    bed = place("bed")
+    chris = autop("Chris", floor)
+    alice = autop("Alice", bed)
+    jack = o.Hacker(floor)
+
+    chris.get_magic()
+    assert chris.magic > 0
+    assert "jack-florey is wearing a shirt" in c(capsys)
+
+    # poor Alice, there's no one to catch a clue from
+    alice.get_magic()
+    assert alice.magic == 0
+
+
+def test_autop_shirt(place, autop, capsys):
+    bed = place("bed")
+    chris = autop("Chris", bed)
+
+    chris.shirt()
+    assert c(capsys).split(": ")[-1].strip() in data.shirts
 
 
 # Oracle
@@ -608,6 +721,7 @@ def test_oracle_die(place, vampire, capsys):
     vlad = vampire("Vlad", floor, None)
 
     nostradamus.die(vlad)
+    assert nostradamus.prophecy not in o.clock.callbacks
     assert "At last, the stars are right!" in c(capsys)
 
 
@@ -617,8 +731,9 @@ def test_slayer_init(place):
     slayer = o.Slayer(floor)
 
     assert slayer.name == "bram-stoker"
-    assert slayer.activity >= 5
-    assert slayer.health >= 5
+    assert slayer.activity in range(5, 11)
+    assert slayer.health in range(5, 11)
+    assert slayer.magic in range(1, 6)
 
 
 def test_slayer_slay(place, vampire, capsys):
@@ -631,18 +746,20 @@ def test_slayer_slay(place, vampire, capsys):
 
     # if there's no Vampires to slay, do nothing
     vlad.die(slayer)
-    slayer.slay()
+    assert not slayer.slay()
     assert "There's no one here to slay!" in c(capsys)
 
 
-def test_slayer_take(holy, place, mthing):
+def test_slayer_take(holy, place, autop, mthing):
     floor = place("floor")
     slayer = o.Slayer(floor)
+    chris = autop("Chris", floor)
     grail = holy('grail', floor)
     relic = holy("relic", floor)
     dog = mthing("dog", floor)
     pillow = mthing("pillow", floor)
 
+    chris.take(grail.name)
     # preferentially take a Holy_Object first
     slayer.take()
     assert grail in slayer.things or relic in slayer.things
@@ -660,8 +777,7 @@ def test_slayer_die(place, vampire, capsys):
 
     slayer.die(vlad)
     assert "Time for another ride on the wheel of dharma..." in c(capsys)
-    assert not slayer.installed
-    # TODO check that Slayer has respawned?
+    # TODO check that Slayer has respawned
 
 
 def test_slayer_suffer(place, vampire, person):
@@ -670,28 +786,53 @@ def test_slayer_suffer(place, vampire, person):
     vlad = vampire("Vlad", floor, None)
     chris = person("Chris", floor)
 
+    # Slayers only take 1 damage from Vampires
     s_health = slayer.health
-    slayer.suffer(2, chris)
-    assert slayer.health == s_health - 2
+    slayer.suffer(5, vlad)
+    assert slayer.health == s_health - 1
 
-    slayer.suffer(3, vlad)
+    # but they suffer normally from other attacks
+    slayer.suffer(3, chris)
     assert slayer.health == s_health - 3
 
 
+# Hacker
+def test_hacker_init(place):
+    floor = place("floor")
+    jack = o.Hacker(floor)
+
+    assert jack.name == 'jack-florey'
+    assert jack.magic == 10
+
+
+def test_hacker_go(place, s_place, capsys):
+    floor = place("floor")
+    tomb = s_place("tomb")
+    jack = o.Hacker(floor)
+    liz = o.Hacker(tomb)
+
+    jack.go()
+    assert "No exit in any direction" in c(capsys)
+
+    liz.go()
+    assert "I'm going to sign in" in c(capsys)
+
+
 # Vampire
-def test_vampire_init(vampire, place):
+def test_vampire_init(vampire, place, capsys):
     floor = place("floor")
     vlad = vampire("Vlad", floor, None)
 
-    assert vlad.power == 10
+    assert vlad.strength == 10
     assert not vlad.sire
     assert vlad.move_and_attack in o.clock.callbacks
 
     lestat = vampire("Lestat", floor, vlad)
-    assert lestat.power == 2
-    assert vlad.power == 11
+    assert lestat.strength == 2
+    assert vlad.strength == 11
     assert lestat.sire == vlad
     assert lestat.move_and_attack in o.clock.callbacks
+    assert "Vlad got stronger" in c(capsys)
 
 
 def test_vampire_die(vampire, place, person, capsys):
@@ -700,19 +841,9 @@ def test_vampire_die(vampire, place, person, capsys):
     chris = person("Chris", floor)
 
     vlad.die(chris)
-    assert vlad.move_and_attack in o.clock.removed_callbacks
     assert vlad.move_and_attack not in o.clock.callbacks
     assert "Vlad turns to dust!" in c(capsys)
     assert not vlad.installed
-
-
-def test_vampire_gain_power(vampire, place, capsys):
-    floor = place("floor")
-    vlad = vampire("Vlad", floor, None)
-
-    vlad.gain_power()
-    assert vlad.power == 11
-    assert "Vlad gained power" in c(capsys)
 
 
 def test_vampire_move_and_attack(vampire):
@@ -789,8 +920,6 @@ def test_body_delete(body, place, vampire):
     mal = body("Mal", floor, vlad)
 
     mal.delete()
-    assert not mal.installed
-    assert mal.wait in o.clock.removed_callbacks
     assert mal.wait not in o.clock.callbacks
 
 
@@ -865,11 +994,10 @@ def test_thingfind(place, thing, person):
 def test_find_all(place, thing, person, mthing):
     bed = place("bed")
     blanket = thing("blanket", bed)
-    cat = thing("cat", bed)
-    pillow = mthing("pillow", bed)
+    cat = mthing("cat", bed)
+    pillow = thing("pillow", bed)
 
-    assert bed.things == [blanket, cat, pillow]
-    assert u.find_all(bed, o.Mobile_Thing) == [pillow]
+    assert u.find_all(bed, o.Mobile_Thing) == [cat]
 
 
 def test_find_exit(exit, place):
