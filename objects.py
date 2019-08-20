@@ -250,17 +250,6 @@ class Exit(Named_Object):
         else:
             self.origin.add_exit(self)
 
-    def use(self, who: 'Person') -> bool:
-        # TODO tell_room()
-        if who.magic >= self.magic:
-            if DEBUG:
-                print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
-            who.change_location(self.destination)
-            return True
-        else:
-            print(who.name + " is insufficiently clueful to use this route")
-            return False
-
 
 # There are several kinds of Person:
 # There are Autonomous_Persons, including Vampires, and there is the Avatar of the user. The foundation is here.
@@ -334,16 +323,40 @@ class Person(Container, Mobile_Thing):
             self.say("I don't have that item!")
             return False
 
+    def equip(self, weapon: str):
+        w = u.thingfind(weapon, self.things)
+        if isinstance(w, Weapon):
+            self.weapon = w
+            if DEBUG:
+                self.say(weapon + " equipped!")
+        else:
+            self.say("You can only equip weapons, sorry.")
+
     def go(self, direction: Optional[str] = None) -> bool:
         exit: Optional[Exit] = u.find_exit(self.location.exits, direction) if direction else u.random_exit(self.location)
 
         if exit:
-            exit.use(self)
-            return True
+            if self.magic >= exit.magic:
+                if DEBUG:
+                    print(self.name + " moves from " + self.location.name + " to " + exit.destination.name)
+                self.change_location(exit.destination)
+                return True
+            else:
+                print(self.name + " is insufficiently clueful to use this route")
+                return False
         else:
             # TODO tell_room()
             print(self.location, "No exit in " + str(direction) + " direction")
             return False
+
+    def change_location(self, new_location: Place):
+        super(Person, self).change_location(new_location)
+        for t in self.things:
+            t.change_location(new_location)
+
+        others = self.people_around()
+        if others:
+            self.say("Hi " + ", ".join(u.names(others)))
 
     def suffer(self, hits: int, perp: 'Person'):
         # negative hits aren't ok
@@ -355,15 +368,6 @@ class Person(Container, Mobile_Thing):
             self.die(perp)
         if DEBUG:
             print('Health: ' + str(self.health))
-
-    def equip(self, weapon: str):
-        w = u.thingfind(weapon, self.things)
-        if isinstance(w, Weapon):
-            self.weapon = w
-            if DEBUG:
-                self.say(weapon + " equipped!")
-        else:
-            self.say("You can only equip weapons, sorry.")
 
     def attack(self, target: str):
         victim: Optional[Person] = u.thingfind(target, self.people_around())
@@ -393,15 +397,6 @@ class Person(Container, Mobile_Thing):
         Body(self.name, self.location, perp)
         self.delete()
 
-    def change_location(self, new_location: Place):
-        super(Person, self).change_location(new_location)
-        for t in self.things:
-            t.change_location(new_location)
-
-        others = self.people_around()
-        if others:
-            self.say("Hi " + ", ".join(u.names(others)))
-
 
 class Autonomous_Person(Person):
     """
@@ -425,16 +420,9 @@ class Autonomous_Person(Person):
         if random.randrange(self.miserly) == 0:
             self.take()
         if self.people_around():
-            self.get_magic()
+            self.hack()
         if DEBUG:
             self.say("I'm done moving for now.")
-
-    def die(self, perp: Person) -> None:
-        # TODO should this remove all callbacks for self??
-        clock.remove_callback(self.move_and_take)
-        if DEBUG:
-            self.say("Aaaaahhhh! I suddenly feel very faint...")
-        super(Autonomous_Person, self).die(perp)
 
     def take(self, itemname='') -> bool:
         items: List[Thing] = self.people_things() + self.room_things()
@@ -447,7 +435,7 @@ class Autonomous_Person(Person):
             itemname = random.choice(items).name
         return super(Autonomous_Person, self).take(itemname)
 
-    def get_magic(self):
+    def hack(self):
         jacks: List[Autonomous_Person] = list(filter(lambda x: x.magic > 5, u.find_all(self.location, Autonomous_Person)))
         if jacks:
             self.magic += random.randint(1, 3)
@@ -456,21 +444,27 @@ class Autonomous_Person(Person):
     def shirt(self):
         self.say(self.name + ' is wearing a shirt that says: ' + random.choice(data.shirts))
 
+    def die(self, perp: Person) -> None:
+        # should this remove all callbacks for self??
+        # no, some callbacks might persist after death
+        clock.remove_callback(self.move_and_take)
+        if DEBUG:
+            self.say("Aaaaahhhh! I suddenly feel very faint...")
+        super(Autonomous_Person, self).die(perp)
+
 
 class Oracle(Autonomous_Person):
     """An Oracle is an Autonomous_Person who walk the halls muttering gloomy predictions of the future."""
 
     def __init__(self, birthplace: Place):
         self.name: str = "nostradamus"
-
         super(Oracle, self).__init__(self.name, birthplace)
-        clock.add_callback(self.prophecy)
 
-    def prophecy(self) -> None:
+    def move_and_take(self) -> None:
         self.say(random.choice(data.sayings))
+        super(Oracle, self).move_and_take()
 
     def die(self, perp: Person):
-        clock.remove_callback(self.prophecy)
         self.say("At last, the stars are right!")
         super(Oracle, self).die(perp)
 
@@ -480,8 +474,8 @@ class Slayer(Autonomous_Person):
 
     def __init__(self, birthplace: Place):
         self.name: str = "bram-stoker"
-
         super(Slayer, self).__init__(self.name, birthplace)
+
         self.activity: int = random.randint(5, 10)
         self.health: int = random.randint(5, 10)
         self.magic: int = random.randint(1, 5)
@@ -490,11 +484,12 @@ class Slayer(Autonomous_Person):
         self.slay()
         super(Slayer, self).go()
 
-    def slay(self):
+    def slay(self) -> bool:
         vamps = u.find_all(self.location, Vampire)
         if vamps:
             target = random.choice(vamps)
             self.attack(target)
+            return True
         else:
             if DEBUG:
                 self.say("There's no one here to slay!")
@@ -511,18 +506,18 @@ class Slayer(Autonomous_Person):
 
         super(Slayer, self).take(itemname)
 
+    def suffer(self, hits: int, perp: Person):
+        if isinstance(perp, Vampire):
+            # TODO this is a clumsy way of reducing Vampire damage to 1
+            hits = 1 + self.strength
+        super(Slayer, self).suffer(hits, perp)
+
     def die(self, perp: Person):
         # TODO figure out how to respawn
         global world
         self.say("Time for another ride on the wheel of dharma...")
         super(Slayer, self).die(perp)
         Slayer(random.choice(list(world.values())))
-
-    def suffer(self, hits: int, perp: Person):
-        if isinstance(perp, Vampire):
-            # TODO this is a clumsy way of reducing Vampire damage to 1
-            hits = 1 + self.strength
-        super(Slayer, self).suffer(hits, perp)
 
 
 class Hacker(Autonomous_Person):
@@ -533,20 +528,19 @@ class Hacker(Autonomous_Person):
         super(Hacker, self).__init__(self.name, birthplace)
         self.magic: int = 10
 
-    def go(self):
+    def hack(self):
         if isinstance(self.location, Special_Location):
             self.say("I'm going to sign in at " + self.location.name)
-        super(Hacker, self).go()
+            Thing("sign-in: " + self.name, self.location)
+        super(Hacker, self).hack()
 
 
-class Vampire(Person):
+class Vampire(Autonomous_Person):
     """An undead Person that randomly attacks people."""
 
     def __init__(self, name: str, birthplace: Place, sire: Optional['Vampire']):
         self.sire = sire
-
         super(Vampire, self).__init__(name, birthplace)
-        clock.add_callback(self.move_and_attack)
 
         if self.sire:
             self.strength = 2
@@ -556,13 +550,8 @@ class Vampire(Person):
         else:
             self.strength = 10
 
-    def die(self, perp: Person):
-        if DEBUG:
-            self.say(self.name + " turns to dust!")
-        clock.remove_callback(self.move_and_attack)
-        self.delete()
-
-    def move_and_attack(self) -> None:
+    def move_and_take(self) -> None:
+        # Note: this does not call super.move_and_take()!!
         if random.randrange(2) == 0:
             self.go()
         if random.randrange(3) < 2:
@@ -583,6 +572,12 @@ class Vampire(Person):
                 victim.suffer(random.randrange(self.strength), self)
                 if DEBUG:
                     print(self.name + " is tired")
+
+    def die(self, perp: Person):
+        if DEBUG:
+            self.say(self.name + " turns to dust!")
+        clock.remove_callback(self.move_and_take)
+        self.delete()
 
 
 class Body(Thing):
