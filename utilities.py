@@ -13,11 +13,13 @@ def names(objectlist: Sequence['Named_Object']) -> List[str]:
 def thingfind(name: str, thinglist: Sequence['Thing']) -> Optional['Thing']:
     # renamed this from objectfind to be more specific
     # TODO should this check for duplicates?
+    # TODO make this more concise
     """Given a name and a list of Things, return the first Thing with that name."""
     for t in thinglist:
         if t.name == name:
             return t
-    return None
+    else:
+        return None
 
 
 def find_all(location: 'Container', type: type) -> List['Thing']:
@@ -28,13 +30,13 @@ def find_all(location: 'Container', type: type) -> List['Thing']:
 def find_exit(exitlist: List['Exit'], dir: str) -> Optional['Exit']:
     # TODO Add better handling for returning more than one exit here.
     """Given a list of exits, find one in the desired direction."""
-    if len(exitlist) > 0:
+    if exitlist:
         exit = [e for e in exitlist if dir in e.direction]
-        if len(exit) == 1:
-            return exit[0]
-        elif len(exit) == 0:
+        if not exit:
             print("No exits found in that direction.")
             return None
+        if len(exit) == 1:
+            return exit[0]
         else:
             print("Exits in that direction lead to: ")
             for e in exit:

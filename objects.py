@@ -209,10 +209,10 @@ class Place(Container, Named_Object):
         Named_Object.__init__(self, name)
         super(Place, self).__init__()
 
-    def exit_towards(self, direction: str):
-        return u.find_exit(self.exits, direction)
+    # def exit_towards(self, direction: str):
+    #     return u.find_exit(self.exits, direction)
 
-    def add_exit(self, exit: 'Exit'):
+    def add_exit(self, exit: 'Exit') -> bool:
         if exit.name in u.names(self.exits):
             if DEBUG:
                 print(self.name + " already has an exit to " + exit.name)
@@ -250,15 +250,13 @@ class Exit(Named_Object):
         else:
             self.origin.add_exit(self)
 
-    def use(self, who: 'Person'):
+    def use(self, who: 'Person') -> bool:
         # TODO tell_room()
         if who.magic >= self.magic:
             if DEBUG:
                 print(who.name + " moves from " + who.location.name + " to " + self.destination.name)
             who.change_location(self.destination)
-            for t in who.things:
-                t.change_location(self.destination)
-
+            return True
         else:
             print(who.name + " is insufficiently clueful to use this route")
             return False
@@ -297,7 +295,7 @@ class Person(Container, Mobile_Thing):
         all_items: List[Mobile_Thing] = []
         for p in self.people_around():
             itemlist: List[Mobile_Thing] = p.things
-            if len(itemlist) > 0:
+            if itemlist:
                 self.say(p.name + " has " + ", ".join(u.names(itemlist)))
             all_items.extend(itemlist)
         # TODO tell_room()
@@ -315,10 +313,7 @@ class Person(Container, Mobile_Thing):
             self.say("I try but cannot take " + item.name)
             return False
         else:
-            if item.owner:
-                n = item.owner.name
-            else:
-                n = item.location.name
+            n = item.owner.name if item.owner else item.location.name
             self.say("I take " + item.name + " from " + n)
             item.change_owner(self)
 
@@ -331,8 +326,6 @@ class Person(Container, Mobile_Thing):
         item: Optional[Mobile_Thing] = u.thingfind(itemname, self.things)
         if item:
             self.say("I drop " + item.name + " at " + self.location.name)
-            # TODO is this needed? cf. exit.use - item should already be in self.location
-            # item.change_location(self.location)
             item.change_owner(None)
             if item == self.weapon:
                 self.weapon = None
@@ -342,21 +335,18 @@ class Person(Container, Mobile_Thing):
             return False
 
     def go(self, direction: Optional[str] = None) -> bool:
-        if direction:
-            exit: Optional[Exit] = self.location.exit_towards(direction)
-        else:
-            exit: Exit = u.random_exit(self.location)
-            direction = 'any'
+        exit: Optional[Exit] = u.find_exit(self.location.exits, direction) if direction else u.random_exit(self.location)
 
         if exit:
             exit.use(self)
             return True
         else:
             # TODO tell_room()
-            print(self.location, "No exit in " + direction + " direction")
+            print(self.location, "No exit in " + str(direction) + " direction")
             return False
 
     def suffer(self, hits: int, perp: 'Person'):
+        # negative hits aren't ok
         hits = max(hits - self.strength, 0)
         self.say("Ouch! " + str(hits) + " damage is more than I want!")
         self.health -= hits
@@ -384,7 +374,7 @@ class Person(Container, Mobile_Thing):
         # pick a weapon: the strongest item in inventory, or fists if you have no weapons
         if not self.weapon:
             weapons: List[Weapon] = u.find_all(self, Weapon)
-            if len(weapons) == 0:
+            if not weapons:
                 self.say(self.name + " punches " + target + "!")
                 victim.suffer(3, self)
                 # punching makes you stronger
@@ -405,8 +395,11 @@ class Person(Container, Mobile_Thing):
 
     def change_location(self, new_location: Place):
         super(Person, self).change_location(new_location)
+        for t in self.things:
+            t.change_location(new_location)
+
         others = self.people_around()
-        if len(others) > 0:
+        if others:
             self.say("Hi " + ", ".join(u.names(others)))
 
 
@@ -431,12 +424,13 @@ class Autonomous_Person(Person):
             self.go()
         if random.randrange(self.miserly) == 0:
             self.take()
-        if len(self.people_around()) > 0:
+        if self.people_around():
             self.get_magic()
         if DEBUG:
             self.say("I'm done moving for now.")
 
     def die(self, perp: Person) -> None:
+        # TODO should this remove all callbacks for self??
         clock.remove_callback(self.move_and_take)
         if DEBUG:
             self.say("Aaaaahhhh! I suddenly feel very faint...")
@@ -449,13 +443,13 @@ class Autonomous_Person(Person):
                 self.say("Whoops, there's nothing here to take.")
             return False
 
-        if itemname == '' and items:
+        if items and not itemname:
             itemname = random.choice(items).name
         return super(Autonomous_Person, self).take(itemname)
 
     def get_magic(self):
         jacks: List[Autonomous_Person] = list(filter(lambda x: x.magic > 5, u.find_all(self.location, Autonomous_Person)))
-        if len(jacks) > 0:
+        if jacks:
             self.magic += random.randint(1, 3)
             random.choice(jacks).shirt()
 
@@ -510,7 +504,7 @@ class Slayer(Autonomous_Person):
         # TODO review this to take items from people as well as places
         holies = u.find_all(self, Holy_Object)
         holy_items = list(filter(lambda t: isinstance(t, Holy_Object), self.room_things() + self.people_things()))
-        if len(holies) > 0 or len(holy_items) == 0:
+        if holies or not holy_items:
             itemname = ''
         else:
             itemname = random.choice(holy_items).name
@@ -526,6 +520,7 @@ class Slayer(Autonomous_Person):
 
     def suffer(self, hits: int, perp: Person):
         if isinstance(perp, Vampire):
+            # TODO this is a clumsy way of reducing Vampire damage to 1
             hits = 1 + self.strength
         super(Slayer, self).suffer(hits, perp)
 
@@ -577,7 +572,7 @@ class Vampire(Person):
 
     def attack(self, target='') -> None:
         others = list(filter(lambda x: isinstance(x, Person) and not isinstance(x, Vampire), self.people_around()))
-        if len(others) > 0:
+        if others:
             victim = random.choice(others)
             self.say(self.name + " bites " + victim.name + "!")
             for t in victim.things:
@@ -624,19 +619,23 @@ class Avatar(Person):
 
     def look(self) -> None:
         print("You are in " + self.location.name)
-        if len(self.things) > 0:
+
+        if self.things:
             print("You are holding: " + ", ".join(u.names(self.things)))
         else:
             print("You are not holding anything.")
-        if len(self.room_things()) > 0:
+
+        if self.room_things():
             print("You see things in the room: " + ", ".join(u.names(self.room_things())))
         else:
             print("There is nothing in the room.")
-        if len(self.people_around()) > 0:
+
+        if self.people_around():
             print("You see other people: " + ", ".join(u.names(self.people_around())))
         else:
             print("There are no other people around you.")
-        if len(self.location.exits) > 0:
+
+        if self.location.exits:
             print("The exits are in directions: " + ", ".join(u.names(self.location.exits)))
         else:
             print("There are no exits... you are dead and gone to heaven!")
@@ -662,6 +661,5 @@ def current_time():
 
 
 def run_clock(x):
-    while x > 0:
+    for i in range(x):
         clock.tick()
-        x -= 1
