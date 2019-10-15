@@ -1,5 +1,5 @@
 import random
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence
 
 if TYPE_CHECKING:
     from objects import *
