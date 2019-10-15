@@ -37,6 +37,8 @@ def create_exits(world):
     # TODO modify Exit to be more parallel to Weapon and Thing??
     """Install an Exit between two Places."""
     for e in data.exits:
+        if 'magic' not in e:
+            e['magic'] = 0
         Exit(world[e['origin']], e['direction1'], world[e['destination']], e['magic'])
         Exit(world[e['destination']], e['direction2'], world[e['origin']], e['magic'])
 
@@ -54,9 +56,9 @@ def create_people(world):
     Hacker(random.choice(rooms))
 
 
-def create_specials(w):
-    for s in data.special_places:
-        w[s] = Special_Location(s)
+def create_hideouts(w):
+    for h in data.hideouts:
+        w[h] = Hideout(h)
 
 
 def setup():
@@ -71,7 +73,7 @@ def setup():
     name = input('player name: ')
     player = Avatar(name, random.choice(list(world.values())))
 
-    create_specials(world)
+    create_hideouts(world)
     create_exits(world)
     player.look()
 

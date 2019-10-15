@@ -267,14 +267,6 @@ def test_place_init(place):
     assert isinstance(bed, o.Container)
     assert isinstance(bed, o.Named_Object)
 
-#
-# def test_place_exit_towards(place, exit):
-#     bed = place("bed")
-#     floor = place("floor")
-#     exit1 = exit(bed, "down", floor)
-#
-#     assert bed.exit_towards("down") == exit1
-
 
 def test_place_add_exit(place, exit, capsys):
     bed = place("bed")
@@ -291,20 +283,20 @@ def test_place_add_exit(place, exit, capsys):
     assert "bed already has an exit to down->floor" in c(capsys)
 
 
-# Special_Location
+# Hideout
 # again, is this necessary?
-def test_special_location_init(s_place):
-    tomb = s_place("tomb")
+def test_hideout_init(hideout):
+    tomb = hideout("tomb")
 
     assert tomb.name == "tomb"
 
 
 # Exit
-def test_exit_init(place, exit, s_place, capsys):
+def test_exit_init(place, exit, hideout, capsys):
     bed = place("bed")
     floor = place("floor")
-    tomb = s_place("tomb")
-    shaft = s_place("shaft")
+    tomb = hideout("tomb")
+    shaft = hideout("shaft")
 
     # Exit from Place to Place, no magic
     exit1 = exit(bed, "down", floor)
@@ -319,16 +311,16 @@ def test_exit_init(place, exit, s_place, capsys):
     exit2 = exit(floor, "up", bed, 4)
     assert exit2
 
-    # Exit from Special_Location to Special_Location, magic
+    # Exit from Hideout to Hideout, magic
     exit3 = exit(shaft, "down", tomb, 2)
     assert exit3
 
-    # Exit from Place to Special_Location, no magic - should fail
+    # Exit from Place to Hideout, no magic - should fail
     exit4 = exit(bed, "down", tomb)
     assert "down->tomb must have some magic" in c(capsys)
     assert not exit4.installed
 
-    # Exit from Place to Special_Location, magic
+    # Exit from Place to Hideout, magic
     exit5 = exit(bed, "up", shaft, 4)
     assert exit5
 
@@ -357,6 +349,14 @@ def test_person_fit(person, place, capsys):
 
     bob.have_fit()
     assert "Yaaaah! I am upset!" in c(capsys)
+
+
+def test_person_shirt(place, person, capsys):
+    bed = place("bed")
+    chris = person("Chris", bed)
+
+    chris.shirt()
+    assert c(capsys).split(": ")[-1].strip() in data.shirts
 
 
 def test_person_people_around(person, place, exit):
@@ -489,18 +489,27 @@ def test_person_equip(person, place, weapon, mthing, capsys):
     assert "You can only equip weapons, sorry." in c(capsys)
 
 
-def test_person_go(person, place, exit, capsys):
+def test_person_go(person, place, exit, mthing, capsys):
     bed = place("bed")
     floor = place("floor")
     table = place("table")
     alice = person("Alice", bed)
+    dog = mthing("dog", bed)
     exit1 = exit(bed, "down", floor)
     exit2 = exit(bed, "left", table)
     exit3 = exit(table, "right", bed)
     exit4 = exit(floor, "up", bed)
 
+    assert alice.take(dog.name)
     assert alice.go("down")
     assert alice.location == floor
+    assert floor.have_thing(alice)
+    assert not bed.have_thing(alice)
+
+    # and your little dog, too!
+    assert dog.location == floor
+    assert floor.have_thing(dog)
+    assert not bed.have_thing(dog)
 
     # without a direction given, wander
     assert alice.go("up")
@@ -508,38 +517,27 @@ def test_person_go(person, place, exit, capsys):
     assert alice.location in [floor, table]
 
     # if there isn't an exit, you can't go that way
-    assert not alice.go("down")
-    assert "No exit in down direction" in c(capsys)
+    assert not alice.go("north")
+    assert "No exit in north direction" in c(capsys)
 
-# TODO merge this into test_person_go
-# def test_exit_use(place, exit, person, mthing, capsys):
-#     bed = place("bed")
-#     floor = place("floor")
-#     exit1 = exit(bed, "down", floor)
-#     exit2 = exit(floor, "up", bed, 4)
-#     alice = person("Alice", bed)
-#     jack = o.Hacker(floor)
-#     dog = mthing("dog", bed)
-#
-#     assert alice.take(dog.name)
-#     alice.go('down')
-#     assert alice.location == floor
-#     assert floor.have_thing(alice)
-#     assert not bed.have_thing(alice)
-#
-#     assert dog.location == floor
-#     assert floor.have_thing(dog)
-#     assert not bed.have_thing(dog)
-#
-#     # Alice can't use exits that require magic
-#     alice.go('up')
-#     assert alice.location == floor
-#     assert "Alice is insufficiently clueful" in c(capsys)
-#
-#     # but Jack can
-#     jack.go('up')
-#     assert jack.location == bed
-#     assert "jack-florey moves from floor to bed" in c(capsys)
+
+def test_person_go_magic(person, place, exit, capsys):
+    bed = place("bed")
+    floor = place("floor")
+    alice = person("Alice", floor)
+    jack = o.Hacker(floor)
+    exit = exit(floor, "up", bed, 3)
+
+    # Alice can't use exits that require magic
+    alice.go('up')
+    assert alice.location == floor
+    assert "Alice is insufficiently clueful" in c(capsys)
+
+    # but Jack can
+    jack.go('up')
+    assert jack.location == bed
+    assert "jack-florey moves from floor to bed" in c(capsys)
+
 
 def test_person_change_location(person, place, capsys):
     bed = place("bed")
@@ -679,14 +677,6 @@ def test_autop_hack(autop, place, capsys):
     assert alice.magic == 0
 
 
-def test_autop_shirt(place, autop, capsys):
-    bed = place("bed")
-    chris = autop("Chris", bed)
-
-    chris.shirt()
-    assert c(capsys).split(": ")[-1].strip() in data.shirts
-
-
 def test_autop_die(autop, place, person, capsys):
     floor = place("floor")
     chris = autop("Chris", floor)
@@ -803,9 +793,9 @@ def test_hacker_init(place):
     assert jack.magic == 10
 
 
-def test_hacker_hack(place, s_place, capsys):
+def test_hacker_hack(place, hideout, capsys):
     floor = place("floor")
-    tomb = s_place("tomb")
+    tomb = hideout("tomb")
     jack = o.Hacker(floor)
     liz = o.Hacker(tomb)
 

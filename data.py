@@ -8,7 +8,7 @@ names: List[str] = ["ben-bitdiddle", "alyssa-hacker", "chuck-vest", "course-6-fr
 
 places: List[str] = ["grendels-den", "barker-library", "lobby-7", "10-250", "lobby-10", "eecs-hq", "eecs-ug-office", "edgerton-hall", "stata-center", "6001-lab", "building-13", "great-court", "student-center", "bexley", "baker", "legal-seafood", "graduation-stage", "34-301", "senior-haus", "east-campus", "random-hall", "coffeehouse", "54-100", "roofdeck", 'pika']
 
-special_places: List[str] = ["54-and-a-half", "the-point", "great-dome", "little-dome", "grad-student-office", "green-roof", "hell"]
+hideouts: List[str] = ["54-and-a-half", "the-point", "great-dome", "little-dome", "grad-student-office", "green-roof", "hell"]
 
 # {'origin': , 'direction1': , 'direction2': , 'destination': },
 # TODO implement logic so direction2 is the opposite of direction1

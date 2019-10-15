@@ -63,9 +63,9 @@ def place():
 
 
 @pytest.fixture
-def s_place():
+def hideout():
     def _special(name):
-        return o.Special_Location(name)
+        return o.Hideout(name)
 
     return _special
 

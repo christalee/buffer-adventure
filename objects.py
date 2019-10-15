@@ -209,9 +209,6 @@ class Place(Container, Named_Object):
         Named_Object.__init__(self, name)
         super(Place, self).__init__()
 
-    # def exit_towards(self, direction: str):
-    #     return u.find_exit(self.exits, direction)
-
     def add_exit(self, exit: 'Exit') -> bool:
         if exit.name in u.names(self.exits):
             if DEBUG:
@@ -224,12 +221,11 @@ class Place(Container, Named_Object):
             return True
 
 
-class Special_Location(Place):
-    """A Special_Location is a Place only reachable through an Exit with a non-zero magic level. When a Hacker finds themself in one, they sign in."""
-    # TODO come up with a better name, ugh
+class Hideout(Place):
+    """A Hideout is a Place only reachable through an Exit with a non-zero magic level. When a Hacker finds themself in one, they sign in."""
 
     def __init__(self, name: str):
-        super(Special_Location, self).__init__(name)
+        super(Hideout, self).__init__(name)
 
 
 class Exit(Named_Object):
@@ -243,7 +239,7 @@ class Exit(Named_Object):
 
         super(Exit, self).__init__(direction + "->" + destination.name)
 
-        if isinstance(self.destination, Special_Location) and self.magic == 0:
+        if isinstance(self.destination, Hideout) and self.magic == 0:
             if DEBUG:
                 print(self.name + " must have some magic to reach this destination")
             self.delete()
@@ -269,6 +265,9 @@ class Person(Container, Mobile_Thing):
     def have_fit(self) -> None:
         self.say("Yaaaah! I am upset!")
         self.say("I feel better now.")
+
+    def shirt(self):
+        self.say(self.name + ' is wearing a shirt that says: ' + random.choice(data.shirts))
 
     # TODO combine _around methods?
     def people_around(self) -> List['Person']:
@@ -436,13 +435,10 @@ class Autonomous_Person(Person):
         return super(Autonomous_Person, self).take(itemname)
 
     def hack(self):
-        jacks: List[Autonomous_Person] = list(filter(lambda x: x.magic > 5, u.find_all(self.location, Autonomous_Person)))
+        jacks: List[Autonomous_Person] = list(filter(lambda x: x.magic > 5, self.people_around()))
         if jacks:
             self.magic += random.randint(1, 3)
             random.choice(jacks).shirt()
-
-    def shirt(self):
-        self.say(self.name + ' is wearing a shirt that says: ' + random.choice(data.shirts))
 
     def die(self, perp: Person) -> None:
         # should this remove all callbacks for self??
@@ -496,14 +492,10 @@ class Slayer(Autonomous_Person):
             return False
 
     def take(self, itemname: str = ''):
-        # TODO review this to take items from people as well as places
         holies = u.find_all(self, Holy_Object)
         holy_items = list(filter(lambda t: isinstance(t, Holy_Object), self.room_things() + self.people_things()))
-        if holies or not holy_items:
-            itemname = ''
-        else:
-            itemname = random.choice(holy_items).name
 
+        itemname = '' if holies or not holy_items else random.choice(holy_items).name
         super(Slayer, self).take(itemname)
 
     def suffer(self, hits: int, perp: Person):
@@ -514,14 +506,13 @@ class Slayer(Autonomous_Person):
 
     def die(self, perp: Person):
         # TODO figure out how to respawn
-        global world
         self.say("Time for another ride on the wheel of dharma...")
         super(Slayer, self).die(perp)
-        Slayer(random.choice(list(world.values())))
+        Slayer(random.choice(rooms))
 
 
 class Hacker(Autonomous_Person):
-    """The Hacker is available to learn magic from"""
+    """The Hacker is available to learn magic from.  When a Hacker finds themself in a Hideout, they sign in."""
 
     def __init__(self, birthplace: Place):
         self.name: str = 'jack-florey'
@@ -529,7 +520,7 @@ class Hacker(Autonomous_Person):
         self.magic: int = 10
 
     def hack(self):
-        if isinstance(self.location, Special_Location):
+        if isinstance(self.location, Hideout):
             self.say("I'm going to sign in at " + self.location.name)
             Thing("sign-in: " + self.name, self.location)
         super(Hacker, self).hack()
